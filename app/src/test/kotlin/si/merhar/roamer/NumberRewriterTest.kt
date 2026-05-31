@@ -459,4 +459,60 @@ class NumberRewriterTest {
         assertIs<NumberRewriter.Result.Rewritten>(result)
         assertEquals("+351912345678", result.newNumber)
     }
+
+    // --- isDestinedForCountry ---
+
+    @Test
+    fun `isDestinedForCountry returns true for Portuguese number targeting Portugal`() {
+        assert(NumberRewriter.isDestinedForCountry("+351912345678", "pt"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns true for German number targeting Germany`() {
+        assert(NumberRewriter.isDestinedForCountry("+491711234567", "de"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns false for Portuguese number when targeting US`() {
+        // +351... starts with +1 (US dial code) but should NOT match US
+        assert(!NumberRewriter.isDestinedForCountry("+351912345678", "us"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns false for Dutch number when targeting US`() {
+        // +31... starts with +1 but should NOT match US
+        assert(!NumberRewriter.isDestinedForCountry("+31612345678", "us"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns true for US number targeting US`() {
+        assert(NumberRewriter.isDestinedForCountry("+12025551234", "us"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns false for number without plus prefix`() {
+        assert(!NumberRewriter.isDestinedForCountry("351912345678", "pt"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns false for unknown country`() {
+        assert(!NumberRewriter.isDestinedForCountry("+999123456789", "zz"))
+    }
+
+    @Test
+    fun `isDestinedForCountry handles case insensitive country code`() {
+        assert(NumberRewriter.isDestinedForCountry("+351912345678", "PT"))
+    }
+
+    @Test
+    fun `isDestinedForCountry returns false when subscriber part too short`() {
+        // +351 followed by only 5 digits — not a real subscriber number
+        assert(!NumberRewriter.isDestinedForCountry("+35112345", "pt"))
+    }
+
+    @Test
+    fun `isDestinedForCountry rejects Spanish number when targeting Greece`() {
+        // Spain is +34, Greece is +30. +34... should not match +30
+        assert(!NumberRewriter.isDestinedForCountry("+34612345678", "gr"))
+    }
 }

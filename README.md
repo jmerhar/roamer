@@ -19,20 +19,23 @@ Roamer registers as the system call redirection service. All outgoing calls pass
 3. If they differ → you're roaming → local numbers get the international prefix
 4. If the number already starts with `+` or `00`, it passes through unchanged
 5. Emergency numbers, short codes, and USSD codes are never modified
+6. If "Use local SIM" is enabled and the call targets the roaming country, it routes through the local SIM
 
 ## Features
 
 - **Automatic detection** — uses the cellular network to determine which country you're in
 - **Manual override** — pick a country manually when on WiFi-only or if detection fails
+- **Local SIM routing** — optionally route local calls through a local SIM (dual-SIM phones)
 - **Italy-aware** — correctly handles Italy's numbering (no trunk prefix stripping)
 - **USSD pass-through** — codes like `*100#` are never modified
 - **Rewrite log** — see recent rewrites for debugging
-- **Zero permissions** — no contacts, no call log, no internet required
+- **Minimal permissions** — only `READ_PHONE_STATE` if local SIM feature is enabled
 
 ## Requirements
 
 - Android 10+ (API 29) — required for `CallRedirectionService`
 - Must be set as the default call redirection app (prompted on first launch)
+- Dual-SIM with a local SIM for the local SIM routing feature (optional)
 
 ## Building
 

@@ -11,6 +11,9 @@ object NumberRewriter {
     /** Maximum length of a number considered a "short code" (not rewritten). */
     private const val SHORT_NUMBER_MAX_LENGTH = 5
 
+    /** Minimum length of a subscriber number (digits after the country code). */
+    private const val MIN_SUBSCRIBER_LENGTH = 6
+
     /**
      * Countries where the leading '0' is part of the subscriber number (no trunk prefix).
      * Italy is the notable EU exception — landline numbers include the '0' (e.g., 06 for Rome).
@@ -26,6 +29,26 @@ object NumberRewriter {
 
         /** Number should be dialled as-is. */
         data class PassThrough(val reason: String) : Result()
+    }
+
+    /**
+     * Checks whether a number (in international format) is destined for the given country.
+     *
+     * Guards against prefix ambiguity: e.g. "+351..." must not match dial code "3" or "35"
+     * — it verifies that the digits after the dial code form a plausible subscriber number
+     * (at least [MIN_SUBSCRIBER_LENGTH] digits).
+     *
+     * @param number The number to check (must start with "+")
+     * @param countryIso ISO code of the target country
+     * @return true if [number] starts with the country's dial code and has a valid subscriber part
+     */
+    fun isDestinedForCountry(number: String, countryIso: String): Boolean {
+        if (!number.startsWith("+")) return false
+        val dialCode = CountryDialCodes.getDialCode(countryIso.lowercase()) ?: return false
+        if (!number.startsWith("+$dialCode")) return false
+        // Ensure the remaining part after +dialCode is a plausible subscriber number
+        val subscriber = number.substring(1 + dialCode.length)
+        return subscriber.length >= MIN_SUBSCRIBER_LENGTH
     }
 
     /**

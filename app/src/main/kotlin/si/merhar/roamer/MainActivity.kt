@@ -1,6 +1,8 @@
 package si.merhar.roamer
 
+import android.Manifest
 import android.app.role.RoleManager
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.telephony.TelephonyManager
 import android.widget.ArrayAdapter
@@ -9,6 +11,7 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.color.DynamicColors
@@ -19,7 +22,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main settings screen. Shows roaming status, enable/disable toggle,
- * manual country override, and recent rewrite log.
+ * local SIM toggle, manual country override, and recent rewrite log.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +31,15 @@ class MainActivity : AppCompatActivity() {
     private val roleRequestLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { /* Role granted or denied — UI will reflect via status text */ }
+
+    private val phoneStatePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            // Permission denied — revert the toggle
+            lifecycleScope.launch { prefs.setUseLocalSim(false) }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
@@ -42,6 +54,7 @@ class MainActivity : AppCompatActivity() {
 
         setupRoleRequest()
         setupToggle()
+        setupLocalSimToggle()
         setupCountryOverride()
         setupStatus()
         setupLog()
@@ -63,6 +76,32 @@ class MainActivity : AppCompatActivity() {
 
         toggle.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch { prefs.setEnabled(isChecked) }
+        }
+    }
+
+    private fun setupLocalSimToggle() {
+        val toggle = findViewById<MaterialSwitch>(R.id.switch_local_sim)
+        prefs.useLocalSim.onEach { enabled ->
+            toggle.isChecked = enabled
+        }.launchIn(lifecycleScope)
+
+        toggle.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Request READ_PHONE_STATE if not already granted
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.READ_PHONE_STATE
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    lifecycleScope.launch { prefs.setUseLocalSim(true) }
+                } else {
+                    // Save optimistically — will be reverted if denied
+                    lifecycleScope.launch { prefs.setUseLocalSim(true) }
+                    phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                }
+            } else {
+                lifecycleScope.launch { prefs.setUseLocalSim(false) }
+            }
         }
     }
 

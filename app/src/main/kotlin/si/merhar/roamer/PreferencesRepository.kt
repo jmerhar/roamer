@@ -21,6 +21,7 @@ class PreferencesRepository(private val context: Context) {
     companion object {
         val KEY_ENABLED = booleanPreferencesKey("enabled")
         val KEY_MANUAL_COUNTRY = stringPreferencesKey("manual_country")
+        val KEY_USE_LOCAL_SIM = booleanPreferencesKey("use_local_sim")
         val KEY_LAST_LOG = stringPreferencesKey("last_log")
     }
 
@@ -34,6 +35,11 @@ class PreferencesRepository(private val context: Context) {
         prefs[KEY_MANUAL_COUNTRY] ?: ""
     }
 
+    /** Whether to route local calls through a local SIM when roaming. */
+    val useLocalSim: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_USE_LOCAL_SIM] ?: false
+    }
+
     /** Recent rewrite log entries (newline-separated, most recent first). */
     val rewriteLog: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_LAST_LOG] ?: ""
@@ -45,6 +51,10 @@ class PreferencesRepository(private val context: Context) {
 
     suspend fun setManualCountry(countryIso: String) {
         context.dataStore.edit { it[KEY_MANUAL_COUNTRY] = countryIso }
+    }
+
+    suspend fun setUseLocalSim(value: Boolean) {
+        context.dataStore.edit { it[KEY_USE_LOCAL_SIM] = value }
     }
 
     /**
@@ -67,4 +77,7 @@ class PreferencesRepository(private val context: Context) {
 
     /** Blocking read of manual country override. */
     suspend fun getManualCountry(): String = manualCountry.first()
+
+    /** Blocking read of use-local-SIM preference. */
+    suspend fun isUseLocalSim(): Boolean = useLocalSim.first()
 }

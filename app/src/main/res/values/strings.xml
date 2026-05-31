@@ -5,5 +5,6 @@
     <string name="label_country_override">Country override</string>
     <string name="label_log">Recent rewrites</string>
     <string name="status_detecting">Detecting…</string>
+    <string name="label_use_local_sim">Use local SIM for local calls</string>
     <string name="log_empty">No rewrites yet</string>
 </resources>
