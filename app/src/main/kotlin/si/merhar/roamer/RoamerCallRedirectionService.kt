@@ -70,6 +70,15 @@ class RoamerCallRedirectionService : CallRedirectionService() {
             }
             is NumberRewriter.Result.PassThrough -> {
                 redirectCall(handle, initialPhoneAccount, false)
+                // Log when the system already normalized a number while roaming,
+                // so the user can see the service is active.
+                val isRoaming = simCountry.isNotEmpty() && simCountry != networkCountry
+                if (enabled && isRoaming && result.reason == "Already international") {
+                    logScope.launch {
+                        val timestamp = LocalDateTime.now().format(timeFormat)
+                        prefs.appendLog("[$timestamp] $number (system-prefixed)")
+                    }
+                }
             }
         }
     }
