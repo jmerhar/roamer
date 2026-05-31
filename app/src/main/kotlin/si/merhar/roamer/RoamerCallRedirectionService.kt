@@ -22,6 +22,11 @@ import java.time.format.DateTimeFormatter
  * [placeCallUnmodified] before returning (or within ~5s). We read preferences with
  * [runBlocking] since DataStore reads from a warmed cache are near-instant, and calling
  * the response methods from a background coroutine is not permitted by the framework.
+ *
+ * Important: We always use [redirectCall] rather than [placeCallUnmodified] because the
+ * Telecom framework normalizes numbers (adds international prefix) before invoking this
+ * service, but [placeCallUnmodified] reverts to the original pre-normalization number.
+ * Using [redirectCall] with the received handle ensures the normalized number is dialed.
  */
 class RoamerCallRedirectionService : CallRedirectionService() {
 
@@ -34,7 +39,7 @@ class RoamerCallRedirectionService : CallRedirectionService() {
         allowInteractiveResponse: Boolean
     ) {
         val number = handle.schemeSpecificPart ?: run {
-            placeCallUnmodified()
+            redirectCall(handle, initialPhoneAccount, false)
             return
         }
 
@@ -57,15 +62,14 @@ class RoamerCallRedirectionService : CallRedirectionService() {
         when (result) {
             is NumberRewriter.Result.Rewritten -> {
                 val newUri = Uri.fromParts("tel", result.newNumber, null)
-                redirectCall(newUri, initialPhoneAccount, true)
-                // Log asynchronously to avoid blocking the call
+                redirectCall(newUri, initialPhoneAccount, false)
                 logScope.launch {
                     val timestamp = LocalDateTime.now().format(timeFormat)
                     prefs.appendLog("[$timestamp] ${result.reason}")
                 }
             }
             is NumberRewriter.Result.PassThrough -> {
-                placeCallUnmodified()
+                redirectCall(handle, initialPhoneAccount, false)
             }
         }
     }
