@@ -15,8 +15,18 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("keystore/release.keystore")
+            storePassword = "roamer"
+            keyAlias = "roamer"
+            keyPassword = "roamer"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
