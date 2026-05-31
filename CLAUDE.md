@@ -14,7 +14,7 @@ make clean    # clean build outputs
 The app has one job: rewrite local phone numbers with international prefixes when roaming.
 
 - **`NumberRewriter`** — pure function, all rewrite logic lives here. Stateless, easily testable.
-- **`RoamerCallRedirectionService`** — thin Android service wrapper. Reads prefs synchronously (`runBlocking`), delegates to `NumberRewriter`, calls `redirectCall()` or `placeCallUnmodified()` on the calling thread.
+- **`RoamerCallRedirectionService`** — thin Android service wrapper. Reads prefs synchronously (`runBlocking`), delegates to `NumberRewriter`, always calls `redirectCall()` on the calling thread.
 - **`CountryDialCodes`** — static mapping, no logic beyond lookup.
 - **`PreferencesRepository`** — DataStore wrapper for settings persistence.
 - **`MainActivity`** — settings UI, observe-only (no business logic).
@@ -22,7 +22,8 @@ The app has one job: rewrite local phone numbers with international prefixes whe
 ## Key Constraints
 
 - `onPlaceCall()` must respond within ~5 seconds. Never do network I/O or heavy work there.
-- `redirectCall()` / `placeCallUnmodified()` must be called on the binder thread (not from a background coroutine).
+- `redirectCall()` must be called on the binder thread (not from a background coroutine).
+- **Never use `placeCallUnmodified()`** — the Telecom framework normalizes numbers (adds international prefix) before invoking `onPlaceCall()`, but `placeCallUnmodified()` reverts to the original pre-normalization number. Always use `redirectCall(handle, ...)` to ensure the normalized number is what actually gets dialed.
 - Italy does NOT use a trunk prefix — the leading `0` is part of the subscriber number. The `noTrunkPrefixCountries` set handles this.
 - USSD/MMI codes (`*`, `#` prefixed) must never be rewritten.
 
