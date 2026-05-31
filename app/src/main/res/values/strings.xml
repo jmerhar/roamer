@@ -4,4 +4,6 @@
     <string name="label_enabled">Rewrite local numbers when roaming</string>
     <string name="label_country_override">Country override</string>
     <string name="label_log">Recent rewrites</string>
+    <string name="status_detecting">Detecting…</string>
+    <string name="log_empty">No rewrites yet</string>
 </resources>

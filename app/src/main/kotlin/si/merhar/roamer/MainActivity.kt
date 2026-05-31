@@ -6,9 +6,12 @@ import android.telephony.TelephonyManager
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -27,8 +30,13 @@ class MainActivity : AppCompatActivity() {
     ) { /* Role granted or denied — UI will reflect via status text */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivityIfAvailable(this)
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         prefs = PreferencesRepository(this)
 
@@ -106,7 +114,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupLog() {
         val logText = findViewById<TextView>(R.id.text_log)
         prefs.rewriteLog.onEach { log ->
-            logText.text = log.ifBlank { "No rewrites yet" }
+            logText.text = log.ifBlank { getString(R.string.log_empty) }
         }.launchIn(lifecycleScope)
     }
 }
