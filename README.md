@@ -48,6 +48,24 @@ make debug     # build & install on connected device
 make test      # run unit tests
 ```
 
+## Releasing
+
+Releases are built and published from `main` with a single command. The
+[`bin/release.sh`](bin/release.sh) script bumps the version, builds a signed
+release APK, commits the bump, tags it `vX.Y`, pushes, and publishes a GitHub
+Release with the APK attached.
+
+```sh
+make release VERSION=1.1                 # notes auto-generated from commits
+make release VERSION=1.1 NOTES=notes.md  # notes from a file
+make release VERSION=1.1 DRAFT=1         # create a draft release
+```
+
+Pre-flight checks ensure you are on `main` with a clean working tree and that
+the tag does not already exist. Signing uses the committed
+`keystore/release.keystore`, so no extra setup is required. Publishing uses the
+[GitHub CLI](https://cli.github.com/) (`gh`), which must be authenticated.
+
 ## Supported Countries
 
 All EU/EEA member states plus common travel destinations:

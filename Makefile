@@ -1,4 +1,4 @@
-.PHONY: build build-release clean test debug install
+.PHONY: build build-release clean test debug install release
 
 ## Build
 
@@ -23,6 +23,11 @@ debug: ## Build and install debug app on connected device
 
 install: ## Build and install release APK on connected device
 	./gradlew installRelease
+
+## Release
+
+release: ## Bump version, build, tag, push, and publish a GitHub Release (VERSION=x.y [NOTES=file] [DRAFT=1])
+	./bin/release.sh $(VERSION) $(if $(NOTES),-n $(NOTES)) $(if $(DRAFT),--draft)
 
 ## Help
 

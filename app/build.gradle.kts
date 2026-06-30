@@ -3,6 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Names release artifacts roamer-release.apk (instead of app-release.apk)
+// so the release script can attach a predictable file to GitHub Releases.
+base.archivesName = "roamer"
+
 android {
     namespace = "si.merhar.roamer"
     compileSdk = 35
