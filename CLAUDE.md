@@ -7,17 +7,18 @@ make build    # debug APK
 make debug    # install to connected device
 make test     # unit tests
 make clean    # clean build outputs
-make release VERSION=x.y  # bump, build, tag, push, publish GitHub Release
+make release VERSION=x.y NOTES=file  # bump, build, tag, push, publish GitHub Release
 ```
 
 ## Releasing
 
-`make release VERSION=x.y` runs `bin/release.sh`, which: checks the tree is
-clean and on `main`, bumps `versionCode`/`versionName` in `app/build.gradle.kts`,
-builds a signed `assembleRelease` APK, commits, tags `vX.Y`, pushes, and creates
-a GitHub Release (via `gh`) with the APK attached. Notes are auto-generated from
-commits unless `NOTES=file` is passed; `DRAFT=1` creates a draft. The release APK
-is named `roamer-release.apk` via `base.archivesName` in `app/build.gradle.kts`.
+`make release VERSION=x.y NOTES=file` runs `bin/release.sh`, which: checks the
+tree is clean and on `main`, bumps `versionCode`/`versionName` in
+`app/build.gradle.kts`, builds a signed `assembleRelease` APK, commits, tags
+`vX.Y`, pushes, and creates a GitHub Release (via `gh`) with the APK attached.
+A notes file is **required** — the script aborts without `NOTES=file`; `DRAFT=1`
+creates a draft. The release APK is named `roamer-release.apk` via
+`base.archivesName` in `app/build.gradle.kts`.
 
 ## Architecture
 

@@ -6,9 +6,10 @@
 # commits the bump, tags it, pushes, and publishes a GitHub Release with the
 # APK attached.
 #
+# Release notes are mandatory — every release must explain what changed.
+#
 # Usage:
-#   ./bin/release.sh 1.1                  # release; notes auto-generated from commits
-#   ./bin/release.sh 1.1 -n notes.md      # release with notes from a file
+#   ./bin/release.sh 1.1 -n notes.md           # release with notes from a file
 #   ./bin/release.sh 1.1 -n notes.md --draft   # same but creates a draft release
 #
 set -euo pipefail
@@ -35,7 +36,7 @@ sedi() {
     fi
 }
 
-VERSION="${1:?Usage: ./bin/release.sh <version> [-n <notes-file>] [--draft]}"
+VERSION="${1:?Usage: ./bin/release.sh <version> -n <notes-file> [--draft]}"
 shift
 
 NOTES_FILE=""
@@ -48,7 +49,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -n "$NOTES_FILE" && ! -f "$NOTES_FILE" ]]; then
+if [[ -z "$NOTES_FILE" ]]; then
+    echo "ERROR: Release notes are required. Usage: ./bin/release.sh <version> -n <notes-file> [--draft]"
+    exit 1
+fi
+
+if [[ ! -f "$NOTES_FILE" ]]; then
     echo "ERROR: Notes file not found: $NOTES_FILE"
     exit 1
 fi
@@ -105,25 +111,18 @@ echo "Creating GitHub Release ${TAG}..."
 PREV_TAG=$(git tag --sort=-v:refname | sed -n '2p')
 REPO_URL=$(gh repo view --json url -q '.url')
 
-if [[ -n "$NOTES_FILE" ]]; then
-    # Custom notes from file, plus a full-changelog link when there's a prior tag.
-    BODY=$(cat "$NOTES_FILE")
-    if [[ -n "$PREV_TAG" ]]; then
-        BODY="${BODY}
+# Release notes from the file, plus a full-changelog link when there's a prior tag.
+BODY=$(cat "$NOTES_FILE")
+if [[ -n "$PREV_TAG" ]]; then
+    BODY="${BODY}
 
 **Full Changelog**: ${REPO_URL}/compare/${PREV_TAG}...${TAG}"
-    fi
-    gh release create "$TAG" "$NAMED_APK" \
-        --title "Roamer ${VERSION}" \
-        --notes "$BODY" \
-        $DRAFT_FLAG
-else
-    # No notes file — let GitHub auto-generate release notes from commits/PRs.
-    gh release create "$TAG" "$NAMED_APK" \
-        --title "Roamer ${VERSION}" \
-        --generate-notes \
-        $DRAFT_FLAG
 fi
+
+gh release create "$TAG" "$NAMED_APK" \
+    --title "Roamer ${VERSION}" \
+    --notes "$BODY" \
+    $DRAFT_FLAG
 
 echo ""
 echo "Done! Release ${TAG} created."

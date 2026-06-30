@@ -26,7 +26,7 @@ install: ## Build and install release APK on connected device
 
 ## Release
 
-release: ## Bump version, build, tag, push, and publish a GitHub Release (VERSION=x.y [NOTES=file] [DRAFT=1])
+release: ## Bump version, build, tag, push, and publish a GitHub Release (VERSION=x.y NOTES=file [DRAFT=1])
 	./bin/release.sh $(VERSION) $(if $(NOTES),-n $(NOTES)) $(if $(DRAFT),--draft)
 
 ## Help
