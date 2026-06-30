@@ -56,8 +56,7 @@ release APK, commits the bump, tags it `vX.Y`, pushes, and publishes a GitHub
 Release with the APK attached.
 
 Release notes are required — every release must ship a notes file explaining
-what changed. The notes appear first, followed by an auto-generated changelog of
-commits since the previous tag:
+what changed:
 
 ```sh
 make release VERSION=1.1 NOTES=notes.md            # release with notes

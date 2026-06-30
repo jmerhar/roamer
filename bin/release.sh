@@ -6,9 +6,7 @@
 # commits the bump, tags it, pushes, and publishes a GitHub Release with the
 # APK attached.
 #
-# Release notes are mandatory — every release must explain what changed. The
-# notes file is shown first, followed by an auto-generated changelog of commits
-# since the previous tag.
+# Release notes are mandatory — every release must explain what changed.
 #
 # Usage:
 #   ./bin/release.sh 1.1 -n notes.md           # release with notes from a file
@@ -109,13 +107,21 @@ git push origin "$TAG"
 
 echo "Creating GitHub Release ${TAG}..."
 
-# The custom notes file is prepended; --generate-notes appends an auto-generated
-# changelog (commits/PRs since the previous tag, ending with a Full Changelog
-# link) at the end.
+# The new tag is the most recent; the previous tag (if any) is the second.
+PREV_TAG=$(git tag --sort=-v:refname | sed -n '2p')
+REPO_URL=$(gh repo view --json url -q '.url')
+
+# Release notes from the file, plus a full-changelog link when there's a prior tag.
+BODY=$(cat "$NOTES_FILE")
+if [[ -n "$PREV_TAG" ]]; then
+    BODY="${BODY}
+
+**Full Changelog**: ${REPO_URL}/compare/${PREV_TAG}...${TAG}"
+fi
+
 gh release create "$TAG" "$NAMED_APK" \
     --title "Roamer ${VERSION}" \
-    --notes "$(cat "$NOTES_FILE")" \
-    --generate-notes \
+    --notes "$BODY" \
     $DRAFT_FLAG
 
 echo ""

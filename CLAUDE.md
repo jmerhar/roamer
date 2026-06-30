@@ -17,9 +17,8 @@ tree is clean and on `main`, bumps `versionCode`/`versionName` in
 `app/build.gradle.kts`, builds a signed `assembleRelease` APK, commits, tags
 `vX.Y`, pushes, and creates a GitHub Release (via `gh`) with the APK attached.
 A notes file is **required** — the script aborts without `NOTES=file`; `DRAFT=1`
-creates a draft. The notes are shown first, then `gh --generate-notes` appends an
-auto-generated changelog of commits since the previous tag. The release APK is
-named `roamer-release.apk` via `base.archivesName` in `app/build.gradle.kts`.
+creates a draft. The release APK is named `roamer-release.apk` via
+`base.archivesName` in `app/build.gradle.kts`.
 
 ## Architecture
 
