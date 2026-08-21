@@ -79,6 +79,14 @@ android {
         jvmTarget = "17"
     }
 
+    testOptions {
+        unitTests.all {
+            // Part of the suite asserts through kotlin.assert, which the JVM evaluates only
+            // with assertions enabled. Gradle enables them by default; stating it explicitly
+            // keeps those tests from silently becoming no-ops if that default ever changes.
+            it.enableAssertions = true
+        }
+    }
 }
 
 dependencies {

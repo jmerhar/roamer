@@ -2,6 +2,7 @@ package si.merhar.roamer
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -183,5 +184,23 @@ class CountryDialCodesTest {
     @Test
     fun `allEntries includes at least 27 EU countries`() {
         assertTrue(CountryDialCodes.allEntries().size >= 27)
+    }
+
+    @Test
+    fun `no dial code is a prefix of another dial code`() {
+        // NumberRewriter.isDestinedForCountry() decides which country a number belongs to
+        // with a startsWith match on the dial code. That is only unambiguous while no code
+        // is a prefix of another, so adding such a code must fail here rather than silently
+        // route numbers to the wrong country.
+        val codes = CountryDialCodes.allEntries().map { it.second }.distinct()
+        for (code in codes) {
+            for (other in codes) {
+                if (code == other) continue
+                assertFalse(
+                    other.startsWith(code),
+                    "Dial code $code is a prefix of $other — isDestinedForCountry() would be ambiguous"
+                )
+            }
+        }
     }
 }

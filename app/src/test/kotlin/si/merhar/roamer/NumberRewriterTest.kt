@@ -2,7 +2,9 @@ package si.merhar.roamer
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class NumberRewriterTest {
 
@@ -363,9 +365,9 @@ class NumberRewriterTest {
             networkCountryIso = "pt"
         )
         assertIs<NumberRewriter.Result.Rewritten>(result)
-        assert(result.reason.contains("PT"))
-        assert(result.reason.contains("0912345678"))
-        assert(result.reason.contains("+351912345678"))
+        assertTrue(result.reason.contains("PT"))
+        assertTrue(result.reason.contains("0912345678"))
+        assertTrue(result.reason.contains("+351912345678"))
     }
 
     // --- USSD/MMI codes ---
@@ -464,55 +466,67 @@ class NumberRewriterTest {
 
     @Test
     fun `isDestinedForCountry returns true for Portuguese number targeting Portugal`() {
-        assert(NumberRewriter.isDestinedForCountry("+351912345678", "pt"))
+        assertTrue(NumberRewriter.isDestinedForCountry("+351912345678", "pt"))
     }
 
     @Test
     fun `isDestinedForCountry returns true for German number targeting Germany`() {
-        assert(NumberRewriter.isDestinedForCountry("+491711234567", "de"))
-    }
-
-    @Test
-    fun `isDestinedForCountry returns false for Portuguese number when targeting US`() {
-        // +351... starts with +1 (US dial code) but should NOT match US
-        assert(!NumberRewriter.isDestinedForCountry("+351912345678", "us"))
-    }
-
-    @Test
-    fun `isDestinedForCountry returns false for Dutch number when targeting US`() {
-        // +31... starts with +1 but should NOT match US
-        assert(!NumberRewriter.isDestinedForCountry("+31612345678", "us"))
+        assertTrue(NumberRewriter.isDestinedForCountry("+491711234567", "de"))
     }
 
     @Test
     fun `isDestinedForCountry returns true for US number targeting US`() {
-        assert(NumberRewriter.isDestinedForCountry("+12025551234", "us"))
+        assertTrue(NumberRewriter.isDestinedForCountry("+12025551234", "us"))
+    }
+
+    @Test
+    fun `isDestinedForCountry rejects numbers carrying another country's dial code`() {
+        assertFalse(NumberRewriter.isDestinedForCountry("+351912345678", "us"))
+        assertFalse(NumberRewriter.isDestinedForCountry("+31612345678", "us"))
+        assertFalse(NumberRewriter.isDestinedForCountry("+34612345678", "gr"))
+        assertFalse(NumberRewriter.isDestinedForCountry("+491711234567", "fr"))
     }
 
     @Test
     fun `isDestinedForCountry returns false for number without plus prefix`() {
-        assert(!NumberRewriter.isDestinedForCountry("351912345678", "pt"))
+        assertFalse(NumberRewriter.isDestinedForCountry("351912345678", "pt"))
     }
 
     @Test
     fun `isDestinedForCountry returns false for unknown country`() {
-        assert(!NumberRewriter.isDestinedForCountry("+999123456789", "zz"))
+        assertFalse(NumberRewriter.isDestinedForCountry("+999123456789", "zz"))
     }
 
     @Test
     fun `isDestinedForCountry handles case insensitive country code`() {
-        assert(NumberRewriter.isDestinedForCountry("+351912345678", "PT"))
+        assertTrue(NumberRewriter.isDestinedForCountry("+351912345678", "PT"))
+    }
+
+    // --- isDestinedForCountry: subscriber-length guard ---
+    //
+    // A number bearing the right dial code but too few digits after it is not dialable in
+    // that country. These cases match on the dial code and are rejected solely by the
+    // length guard, so they fail if the guard is weakened or removed.
+
+    @Test
+    fun `isDestinedForCountry rejects subscriber part below minimum length`() {
+        assertFalse(NumberRewriter.isDestinedForCountry("+35112345", "pt"))
     }
 
     @Test
-    fun `isDestinedForCountry returns false when subscriber part too short`() {
-        // +351 followed by only 5 digits — not a real subscriber number
-        assert(!NumberRewriter.isDestinedForCountry("+35112345", "pt"))
+    fun `isDestinedForCountry accepts subscriber part at exactly minimum length`() {
+        assertTrue(NumberRewriter.isDestinedForCountry("+351123456", "pt"))
     }
 
     @Test
-    fun `isDestinedForCountry rejects Spanish number when targeting Greece`() {
-        // Spain is +34, Greece is +30. +34... should not match +30
-        assert(!NumberRewriter.isDestinedForCountry("+34612345678", "gr"))
+    fun `isDestinedForCountry rejects a bare dial code with no subscriber part`() {
+        assertFalse(NumberRewriter.isDestinedForCountry("+351", "pt"))
+    }
+
+    @Test
+    fun `isDestinedForCountry rejects short number under a single-digit dial code`() {
+        // US dial code is one digit, so almost any string starting "+1" matches it and the
+        // length guard is the only thing standing between this and a false positive.
+        assertFalse(NumberRewriter.isDestinedForCountry("+12345", "us"))
     }
 }

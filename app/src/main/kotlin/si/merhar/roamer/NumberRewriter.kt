@@ -34,13 +34,19 @@ object NumberRewriter {
     /**
      * Checks whether a number (in international format) is destined for the given country.
      *
-     * Guards against prefix ambiguity: e.g. "+351..." must not match dial code "3" or "35"
-     * — it verifies that the digits after the dial code form a plausible subscriber number
-     * (at least [MIN_SUBSCRIBER_LENGTH] digits).
+     * Matches the country's dial code and then requires at least [MIN_SUBSCRIBER_LENGTH]
+     * digits after it, so a number too short to be a real subscriber number in that
+     * country is not taken for one. This matters most for single-digit dial codes, where
+     * the dial code alone is very weak evidence.
+     *
+     * The plain prefix match is sound only because no dial code in [CountryDialCodes] is a
+     * prefix of another; `CountryDialCodesTest` asserts that property, so adding a country
+     * that breaks it fails the build rather than silently mismatching numbers here.
      *
      * @param number The number to check (must start with "+")
      * @param countryIso ISO code of the target country
-     * @return true if [number] starts with the country's dial code and has a valid subscriber part
+     * @return true if [number] starts with the country's dial code and has a plausible
+     *   subscriber part
      */
     fun isDestinedForCountry(number: String, countryIso: String): Boolean {
         if (!number.startsWith("+")) return false
