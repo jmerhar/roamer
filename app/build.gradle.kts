@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,6 +8,28 @@ plugins {
 // Names release artifacts roamer-release.apk (instead of app-release.apk)
 // so the release script can attach a predictable file to GitHub Releases.
 base.archivesName = "roamer"
+
+// Release signing credentials live outside version control: keystore.properties (which
+// is gitignored) for local builds, environment variables for CI. Keeping them out of the
+// build script means publishing the repository never publishes the signing key.
+//
+// Signing is configured only when a keystore and password are both present. Debug builds
+// and unit tests deliberately require neither, so a fresh clone builds and tests with no
+// secrets at all.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun signingSetting(propertyKey: String, environmentKey: String): String? =
+    keystoreProperties.getProperty(propertyKey) ?: System.getenv(environmentKey)
+
+val releaseKeystore = rootProject.file("keystore/release.keystore")
+val releaseStorePassword = signingSetting("storePassword", "ROAMER_KEYSTORE_PASSWORD")
+val releaseKeyPassword =
+    signingSetting("keyPassword", "ROAMER_KEY_PASSWORD") ?: releaseStorePassword
+val releaseKeyAlias = signingSetting("keyAlias", "ROAMER_KEY_ALIAS") ?: "roamer"
+val canSignRelease = releaseKeystore.exists() && !releaseStorePassword.isNullOrBlank()
 
 android {
     namespace = "si.merhar.roamer"
@@ -20,11 +44,13 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = rootProject.file("keystore/release.keystore")
-            storePassword = "roamer"
-            keyAlias = "roamer"
-            keyPassword = "roamer"
+        if (canSignRelease) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
@@ -33,7 +59,9 @@ android {
             applicationIdSuffix = ".debug"
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Left unsigned when no credentials are available. bin/release.sh verifies
+            // the APK is signed before publishing, so an unsigned build cannot ship.
+            signingConfig = if (canSignRelease) signingConfigs.getByName("release") else null
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -50,6 +78,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
 }
 
 dependencies {
