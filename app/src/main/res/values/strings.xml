@@ -7,4 +7,21 @@
     <string name="status_detecting">Detecting…</string>
     <string name="label_use_local_sim">Use local SIM for local calls</string>
     <string name="log_empty">No rewrites yet</string>
+
+    <!-- Country override dropdown -->
+    <string name="country_auto_detect">Auto-detect</string>
+    <!-- Country entry: ISO code, then dial code. Example: "PT (+351)" -->
+    <string name="country_entry">%1$s (+%2$s)</string>
+
+    <!-- Status card -->
+    <string name="status_unknown_country_code">?</string>
+    <string name="status_no_role">⚠ Not set as call redirection app</string>
+    <!-- SIM's home country, then the country of the network currently connected to -->
+    <string name="status_sim_and_network">SIM: %1$s | Network: %2$s</string>
+    <string name="status_disabled">Rewriting off — calls pass through</string>
+    <string name="status_not_roaming">Not roaming — calls pass through</string>
+    <!-- %1$s is a dial code, without its leading plus -->
+    <string name="status_roaming">Roaming — will dial as +%1$s</string>
+    <string name="status_roaming_unsupported">Roaming — country not supported, calls pass through</string>
+    <string name="status_override_active">Country override: %1$s</string>
 </resources>
