@@ -1,11 +1,11 @@
-.PHONY: build build-release clean test debug install release
+.PHONY: build build-release clean test lint check debug install release help
 
 ## Build
 
 build: ## Build debug APK
 	./gradlew assembleDebug
 
-build-release: ## Build release APK
+build-release: ## Build release APK (unsigned without signing credentials)
 	./gradlew assembleRelease
 
 clean: ## Clean build outputs
@@ -15,6 +15,12 @@ clean: ## Clean build outputs
 
 test: ## Run all unit tests
 	./gradlew test
+
+lint: ## Run Android Lint and ShellCheck
+	./gradlew lint
+	shellcheck bin/*.sh
+
+check: lint test ## Run lint and tests — the same gates CI enforces
 
 ## Device
 

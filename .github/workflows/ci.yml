@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      # Verifies the committed gradle-wrapper.jar matches a published Gradle release.
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: ShellCheck
+        run: shellcheck bin/*.sh
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Android Lint
+        run: ./gradlew lint
+
+      # Builds the release variant so R8/minification breakage surfaces here rather than
+      # at release time. No signing credentials are present, so the APK is unsigned.
+      - name: Release build
+        run: ./gradlew assembleRelease
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: reports
+          path: app/build/reports/
+          if-no-files-found: ignore

@@ -8,3 +8,17 @@ updates:
       actions:
         patterns:
           - "*"
+
+  # Gradle plugins and AndroidX dependencies. Grouped so routine patch/minor bumps arrive
+  # as one PR, while major bumps (AGP and Kotlin especially) come separately for review.
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      gradle-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
