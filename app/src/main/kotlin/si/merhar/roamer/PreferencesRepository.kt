@@ -58,26 +58,27 @@ class PreferencesRepository(private val context: Context) {
     }
 
     /**
-     * Appends a log entry, keeping at most [maxEntries] lines.
+     * Prepends a log entry, keeping at most [maxEntries] lines.
+     *
+     * Retention is delegated to [RewriteLog.prepend] so the rules stay unit-testable.
      */
-    suspend fun appendLog(entry: String, maxEntries: Int = 20) {
+    suspend fun appendLog(entry: String, maxEntries: Int = RewriteLog.MAX_ENTRIES) {
         context.dataStore.edit { prefs ->
-            val existing = prefs[KEY_LAST_LOG] ?: ""
-            val lines = existing.lines().filter { it.isNotBlank() }.toMutableList()
-            lines.add(0, entry)
-            if (lines.size > maxEntries) {
-                lines.subList(maxEntries, lines.size).clear()
-            }
-            prefs[KEY_LAST_LOG] = lines.joinToString("\n")
+            prefs[KEY_LAST_LOG] = RewriteLog.prepend(prefs[KEY_LAST_LOG] ?: "", entry, maxEntries)
         }
     }
 
-    /** Blocking read of enabled state (for use in the service). */
+    /**
+     * Reads the current enabled state once.
+     *
+     * Suspends rather than blocking; the service wraps these single-shot reads in
+     * `runBlocking` because it must answer Telecom on the calling thread.
+     */
     suspend fun isEnabled(): Boolean = enabled.first()
 
-    /** Blocking read of manual country override. */
+    /** Reads the manual country override once. */
     suspend fun getManualCountry(): String = manualCountry.first()
 
-    /** Blocking read of use-local-SIM preference. */
+    /** Reads the use-local-SIM preference once. */
     suspend fun isUseLocalSim(): Boolean = useLocalSim.first()
 }
