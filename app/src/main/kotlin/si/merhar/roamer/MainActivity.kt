@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         setupRoleRequest()
         setupToggle()
         setupLocalSimToggle()
+        setupFallbackRewriteToggle()
         setupCountryOverride()
         setupStatus()
         setupLog()
@@ -135,6 +136,12 @@ class MainActivity : AppCompatActivity() {
         }.launchIn(lifecycleScope)
     }
 
+    private fun setupFallbackRewriteToggle() {
+        bindSwitch(findViewById(R.id.switch_fallback_rewrite), prefs.useFallbackRewrite) { isChecked ->
+            lifecycleScope.launch { prefs.setUseFallbackRewrite(isChecked) }
+        }
+    }
+
     private fun setupCountryOverride() {
         val dropdown = findViewById<AutoCompleteTextView>(R.id.dropdown_country)
         val entries = listOf("" to getString(R.string.country_auto_detect)) +
@@ -161,10 +168,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupStatus() {
         val statusText = findViewById<TextView>(R.id.text_status)
-        combine(prefs.enabled, prefs.manualCountry, statusTick) { enabled, manualCountry, _ ->
-            enabled to manualCountry
-        }.onEach { (enabled, manualCountry) ->
-            statusText.text = buildStatusText(enabled, manualCountry)
+        combine(
+            prefs.enabled,
+            prefs.manualCountry,
+            prefs.useFallbackRewrite,
+            statusTick
+        ) { enabled, manualCountry, fallback, _ ->
+            Triple(enabled, manualCountry, fallback)
+        }.onEach { (enabled, manualCountry, fallback) ->
+            statusText.text = buildStatusText(enabled, manualCountry, fallback)
         }.launchIn(lifecycleScope)
     }
 
@@ -175,7 +187,11 @@ class MainActivity : AppCompatActivity() {
      * override — so the card describes what calls will actually do rather than what the
      * network alone suggests.
      */
-    private fun buildStatusText(enabled: Boolean, manualCountry: String): String {
+    private fun buildStatusText(
+        enabled: Boolean,
+        manualCountry: String,
+        fallbackEnabled: Boolean
+    ): String {
         val telephony = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
         val simCountry = telephony.simCountryIso.orEmpty().lowercase()
         val networkCountry = telephony.networkCountryIso.orEmpty().lowercase()
@@ -203,6 +219,9 @@ class MainActivity : AppCompatActivity() {
                 when {
                     !enabled -> getString(R.string.status_disabled)
                     simCountry == effectiveCountry -> getString(R.string.status_not_roaming)
+                    // Roaming: Android supplies the prefix either way. The fallback only
+                    // changes what happens to numbers it could not recognise.
+                    !fallbackEnabled -> getString(R.string.status_roaming_system)
                     else -> CountryDialCodes.getDialCode(effectiveCountry)
                         ?.let { getString(R.string.status_roaming, it) }
                         ?: getString(R.string.status_roaming_unsupported)

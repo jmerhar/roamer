@@ -3,8 +3,16 @@ package si.merhar.roamer
 /**
  * Pure logic for deciding whether and how to rewrite a phone number.
  *
- * The rewriter adds an international prefix to local numbers when the user
- * is roaming (SIM country differs from network country).
+ * This is a fallback, not the app's main mechanism. Telecom normalizes the dialled number
+ * to E.164 against the visited network's country before the redirection service is called,
+ * so a local number normally arrives already prefixed and is reported as
+ * [Result.PassThrough] with reason "Already international".
+ *
+ * Rewriting here only happens for numbers Telecom could not parse for that region and
+ * therefore passed through untouched. Because a local-format number cannot be attributed
+ * to a country with certainty, that rewrite is a guess, and it is gated behind
+ * [fallbackEnabled] — off by default, since a home-country number in national format is
+ * indistinguishable from a visited-country one and would be given the wrong prefix.
  */
 object NumberRewriter {
 
@@ -63,20 +71,18 @@ object NumberRewriter {
      * @param number The dialled number (may include trunk prefix, international prefix, etc.)
      * @param simCountryIso ISO code of the SIM's home country (e.g. "nl")
      * @param networkCountryIso ISO code of the currently connected network's country (e.g. "pt")
-     * @param enabled Whether the rewriter is enabled by the user
+     * @param fallbackEnabled Whether the user opted into rewriting numbers Telecom left
+     *   unparsed. Every other outcome is reported regardless, so the log stays informative
+     *   about what a call did even while rewriting is off.
      * @param manualCountryOverride Optional manual override for network country (used when on WiFi)
      */
     fun evaluate(
         number: String,
         simCountryIso: String,
         networkCountryIso: String,
-        enabled: Boolean = true,
+        fallbackEnabled: Boolean = true,
         manualCountryOverride: String? = null
     ): Result {
-        if (!enabled) {
-            return Result.PassThrough("Rewriter disabled")
-        }
-
         val cleaned = number.replace("[\\s\\-()]".toRegex(), "")
 
         // Already has international prefix
@@ -105,6 +111,12 @@ object NumberRewriter {
         // Look up the dial code for the network country
         val dialCode = CountryDialCodes.getDialCode(effectiveNetworkCountry)
             ?: return Result.PassThrough("Unknown country: $effectiveNetworkCountry")
+
+        // Everything below rewrites the number. Checked here rather than on entry so the
+        // outcomes above are still reported while the fallback is off.
+        if (!fallbackEnabled) {
+            return Result.PassThrough("Fallback rewrite off")
+        }
 
         // Strip trunk prefix (leading 0) — except in countries where 0 is part of the number
         val withoutTrunk = if (cleaned.startsWith("0") && effectiveNetworkCountry !in noTrunkPrefixCountries) {

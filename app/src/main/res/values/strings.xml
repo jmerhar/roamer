@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Roamer</string>
-    <string name="label_enabled">Rewrite local numbers when roaming</string>
+    <string name="label_enabled">Dial in international format when roaming</string>
+    <string name="caption_enabled">Turning this off leaves calls exactly as if Roamer were not installed.</string>
     <string name="label_country_override">Country override</string>
-    <string name="label_log">Recent rewrites</string>
+    <string name="caption_country_override">Only used by the setting above, for when the network country cannot be detected.</string>
+    <string name="label_log">Recent calls</string>
+    <string name="caption_log">"system-prefixed" means Android supplied the prefix and Roamer passed the call through, which is the normal case.</string>
+    <string name="label_how_it_works">How Roamer works</string>
+    <string name="text_how_it_works">Android already works out the full international number using the country you are in — but it does not dial that form unless an app asks it to.\n\nRoamer is that app: it hands the international number back to Android so it is the one actually dialled. That is all it does for almost every call.</string>
     <string name="status_detecting">Detecting…</string>
     <string name="label_use_local_sim">Use local SIM for local calls</string>
+    <string name="caption_use_local_sim">On a dual-SIM phone, place calls to the country you are in through that country\'s SIM. Needs phone permission.</string>
+    <string name="label_use_fallback_rewrite">Also rewrite unrecognised numbers</string>
+    <string name="caption_use_fallback_rewrite">Off by default. Android normally works out the country prefix itself. This only affects numbers it could not recognise — and because a local number gives no clue which country it belongs to, Roamer has to guess the country you are in. A home number typed without its prefix would then be dialled in the wrong country.</string>
     <string name="log_empty">No rewrites yet</string>
 
     <!-- Country override dropdown -->
@@ -20,8 +28,9 @@
     <string name="status_sim_and_network">SIM: %1$s | Network: %2$s</string>
     <string name="status_disabled">Rewriting off — calls pass through</string>
     <string name="status_not_roaming">Not roaming — calls pass through</string>
+    <string name="status_roaming_system">Roaming — Android supplies the country prefix</string>
     <!-- %1$s is a dial code, without its leading plus -->
-    <string name="status_roaming">Roaming — will dial as +%1$s</string>
+    <string name="status_roaming">Roaming — unrecognised numbers will get +%1$s</string>
     <string name="status_roaming_unsupported">Roaming — country not supported, calls pass through</string>
     <string name="status_override_active">Country override: %1$s</string>
 </resources>

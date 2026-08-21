@@ -38,11 +38,29 @@ the handle Telecom supplied. That single decision is what makes the E.164 form t
 actually dialled. It never calls `placeCallUnmodified()`, which would revert to the
 original dial string and undo the normalization.
 
-When Telecom *cannot* parse the number for the visited region it passes the original
-string through untouched. `NumberRewriter` is the fallback for that case: it strips the
-trunk prefix where appropriate and prepends the visited country's dial code itself.
+That is all Roamer does for virtually every call. On a real device roaming in Portugal on
+a Dutch SIM, all 14 calls in the app's log took this path.
 
-Either way the result is the same: the call is placed in international format.
+### The fallback, and why it is off by default
+
+When Telecom *cannot* parse a number for the visited region, it passes the original string
+through untouched. `NumberRewriter` can step in and prepend the visited country's dial code
+itself — stripping the trunk prefix where appropriate.
+
+This is behind **"Also rewrite unrecognised numbers"**, off by default, because such a
+rewrite is a guess. A number in local format carries no indication of which country it
+belongs to, so the fallback assumes it belongs to the country you are in. That is wrong for
+a home-country number typed without its prefix: roaming in Portugal, a Dutch `0612345678`
+becomes `+351612345678` — a different, live number.
+
+Turn it on if you find calls failing that Android did not recognise. Leave it off otherwise;
+the main behaviour above does not depend on it.
+
+### Turning Roamer off
+
+The **"Dial in international format when roaming"** switch responds to Telecom with
+`placeCallUnmodified()`, which places the original dial string — leaving calls exactly as if
+Roamer were not installed. It is a real off switch, not just a bypass of the fallback.
 
 ## What Is Not Rewritten
 
@@ -53,22 +71,22 @@ Either way the result is the same: the call is placed in international format.
 
 ## Known Limitation
 
-A number in local format is genuinely ambiguous, and Roamer cannot resolve that
-ambiguity: it has no way to distinguish a visited-country number from a home-country
-number typed in national format. While roaming in Portugal, a Dutch mobile entered as
-`0612345678` becomes `+351612345678`.
+The ambiguity described above is not resolvable from the number alone, which is why the
+fallback is opt-in rather than fixed. With the fallback off — the default — Roamer never
+guesses a country, so it cannot misattribute a number.
 
-Dial home-country numbers in full international format (or save contacts that way, which
-Android does by default). The rewrite log in the app shows what each call was turned into.
+Dial home-country numbers in full international format, or save contacts that way, which
+Android does by default. The log in the app shows what each call was dialled as.
 
 ## Features
 
 - **Automatic detection** — uses the cellular network to determine which country you're in
-- **Manual override** — pick a country manually when on WiFi-only or if detection fails
 - **Local SIM routing** — optionally route local calls through a local SIM (dual-SIM phones)
+- **Opt-in fallback** — rewrite numbers Android could not recognise, off by default
+- **Manual override** — pick a country manually for the fallback when detection fails
 - **Italy-aware** — Italian numbers keep their leading `0`, which is part of the subscriber
   number rather than a trunk prefix
-- **Rewrite log** — see what recent calls were dialled as
+- **Call log** — see what recent calls were dialled as, and why
 
 ## Requirements
 

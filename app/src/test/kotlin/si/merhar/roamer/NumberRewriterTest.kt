@@ -141,16 +141,82 @@ class NumberRewriterTest {
         assertEquals("Not roaming", result.reason)
     }
 
+    // --- Fallback gate ---
+
     @Test
-    fun `passes through when disabled`() {
+    fun `passes through when the fallback rewrite is off`() {
         val result = NumberRewriter.evaluate(
             number = "912345678",
             simCountryIso = "nl",
             networkCountryIso = "pt",
-            enabled = false
+            fallbackEnabled = false
         )
         assertIs<NumberRewriter.Result.PassThrough>(result)
-        assertEquals("Rewriter disabled", result.reason)
+        assertEquals("Fallback rewrite off", result.reason)
+    }
+
+    @Test
+    fun `reports the real outcome rather than the fallback gate when already international`() {
+        // Outcomes decided before the rewrite are reported whether or not the fallback is on,
+        // so the log still says why a call was left alone.
+        val result = NumberRewriter.evaluate(
+            number = "+351912345678",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = false
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("Already international", result.reason)
+    }
+
+    @Test
+    fun `reports USSD codes rather than the fallback gate when the fallback is off`() {
+        val result = NumberRewriter.evaluate(
+            number = "*100#",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = false
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("USSD/MMI code", result.reason)
+    }
+
+    @Test
+    fun `reports not roaming rather than the fallback gate when the fallback is off`() {
+        val result = NumberRewriter.evaluate(
+            number = "0612345678",
+            simCountryIso = "nl",
+            networkCountryIso = "nl",
+            fallbackEnabled = false
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("Not roaming", result.reason)
+    }
+
+    @Test
+    fun `rewrites when the fallback is explicitly on`() {
+        val result = NumberRewriter.evaluate(
+            number = "912345678",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+351912345678", result.newNumber)
+    }
+
+    @Test
+    fun `home-country number in national format is misattributed while roaming`() {
+        // Documents the known limitation: a Dutch mobile dialled in Portugal is
+        // indistinguishable from a Portuguese number, which is why the fallback is opt-in.
+        val result = NumberRewriter.evaluate(
+            number = "0612345678",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+351612345678", result.newNumber)
     }
 
     // --- Short numbers / emergency ---

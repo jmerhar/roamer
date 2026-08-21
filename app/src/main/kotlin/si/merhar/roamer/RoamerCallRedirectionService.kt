@@ -24,10 +24,14 @@ import java.time.format.DateTimeFormatter
  * [runBlocking] since DataStore reads from a warmed cache are near-instant, and calling
  * the response methods from a background coroutine is not permitted by the framework.
  *
- * Important: We always use [redirectCall] rather than [placeCallUnmodified] because the
- * Telecom framework normalizes numbers (adds international prefix) before invoking this
- * service, but [placeCallUnmodified] reverts to the original pre-normalization number.
- * Using [redirectCall] with the received handle ensures the normalized number is dialed.
+ * Important: while enabled, this always answers with [redirectCall] and never
+ * [placeCallUnmodified]. Telecom normalizes the number to E.164 against the visited
+ * network's country before calling this service but places the original dial string on
+ * every path that does not receive an explicit redirect, so echoing the supplied handle
+ * back is what makes the international form the number actually dialed.
+ *
+ * [placeCallUnmodified] is therefore exactly how the disabled state is expressed: it
+ * places the original dial string, leaving the call as if this app were not installed.
  */
 class RoamerCallRedirectionService : CallRedirectionService() {
 
@@ -44,20 +48,30 @@ class RoamerCallRedirectionService : CallRedirectionService() {
             return
         }
 
+        val prefs = PreferencesRepository(applicationContext)
+        val enabled = runBlocking { prefs.isEnabled() }
+
+        // Disabled means "behave as if this app were not installed", which is what placing
+        // the call unmodified does: the original dial string goes out, not Telecom's
+        // normalized handle.
+        if (!enabled) {
+            placeCallUnmodified()
+            return
+        }
+
         val telephony = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
         val simCountry = telephony.simCountryIso ?: ""
         val networkCountry = telephony.networkCountryIso ?: ""
 
-        val prefs = PreferencesRepository(applicationContext)
-        val enabled = runBlocking { prefs.isEnabled() }
         val manualCountry = runBlocking { prefs.getManualCountry().ifBlank { null } }
         val useLocalSim = runBlocking { prefs.isUseLocalSim() }
+        val useFallbackRewrite = runBlocking { prefs.isUseFallbackRewrite() }
 
         val result = NumberRewriter.evaluate(
             number = number,
             simCountryIso = simCountry,
             networkCountryIso = networkCountry,
-            enabled = enabled,
+            fallbackEnabled = useFallbackRewrite,
             manualCountryOverride = manualCountry
         )
 
@@ -94,7 +108,7 @@ class RoamerCallRedirectionService : CallRedirectionService() {
                 prefs.appendLog("[$timestamp] $reason$suffix")
             } else {
                 val isRoaming = simCountry.isNotEmpty() && simCountry != networkCountry
-                if (enabled && isRoaming) {
+                if (isRoaming) {
                     val passReason = (result as NumberRewriter.Result.PassThrough).reason
                     if (passReason == "Already international") {
                         val suffix = if (usedLocal) " [local SIM]" else ""

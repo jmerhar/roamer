@@ -40,12 +40,17 @@ Consequences to keep in mind:
   not a bug. The service logs those as `(system-prefixed)` so the log is not misleadingly
   empty.
 - `NumberRewriter` is the **fallback** for numbers Telecom could not parse for the visited
-  region, which it passes through unchanged. That is the path where the rewrite logic
-  genuinely fires.
-- Because a local-format number is ambiguous, that fallback cannot distinguish a
-  visited-country number from a home-country number in national format: roaming in
-  Portugal, a Dutch `0612345678` becomes `+351612345678`. Documented in the README as a
-  known limitation; do not "fix" it by guessing.
+  region, which it passes through unchanged. It is gated behind the `useFallbackRewrite`
+  preference, **off by default**, because the rewrite has to assume a local-format number
+  belongs to the country the device is in — wrong for a home-country number in national
+  format, which becomes a live number in the wrong country (roaming in Portugal, a Dutch
+  `0612345678` becomes `+351612345678`). Do not "fix" that by guessing harder; it is not
+  decidable from the number.
+- Measured on a device roaming in PT on an NL SIM: 14 of 14 logged calls took the
+  framework path, and the fallback fired zero times. Treat it as rare by default.
+- `evaluate()` reports outcomes decided *before* the rewrite (already international, USSD,
+  short number, not roaming) whether or not the fallback is on, so the log still explains
+  why a call was left alone. Only the rewrite itself is gated.
 
 ## Architecture
 
@@ -59,16 +64,20 @@ The app has one job: make outgoing calls dial in international format when roami
   synchronously (`runBlocking`), delegates to `NumberRewriter`, resolves local SIM if
   enabled, always calls `redirectCall()` on the calling thread.
 - **`CountryDialCodes`** — static mapping, no logic beyond lookup.
-- **`PreferencesRepository`** — DataStore wrapper for settings persistence.
+- **`PreferencesRepository`** — DataStore wrapper for settings persistence. `enabled`
+  (default on) is the master switch; `useFallbackRewrite` (default off) gates the rewriter;
+  `useLocalSim` and `manualCountry` are independent of both.
 - **`MainActivity`** — settings UI, observe-only (no business logic).
 
 ## Key Constraints
 
 - `onPlaceCall()` must respond within ~5 seconds. Never do network I/O or heavy work there.
 - `redirectCall()` must be called on the binder thread (not from a background coroutine).
-- **Never use `placeCallUnmodified()`** — it places `mDestinationUri`, the original
-  pre-normalization dial string, discarding the E.164 form. Always use
-  `redirectCall(handle, ...)`.
+- **`placeCallUnmodified()` is only for the disabled state.** It places `mDestinationUri`,
+  the original pre-normalization dial string, discarding the E.164 form — which is exactly
+  what "behave as if this app were not installed" means, and so is how the master `enabled`
+  preference expresses off. While enabled, always answer with `redirectCall(handle, ...)`;
+  using `placeCallUnmodified()` there would silently defeat the app's entire purpose.
 - Italy does NOT use a trunk prefix — the leading `0` is part of the subscriber number.
   The `noTrunkPrefixCountries` set handles this.
 - USSD/MMI codes (`*`, `#` prefixed) must never be rewritten.
