@@ -103,6 +103,24 @@ The app has one job: make outgoing calls dial in international format when roami
   length sanity check rather than a defence against prefix collisions — a test asserts the
   no-prefix property, which is what keeps the simple `startsWith` match correct.
 
+## Toolchain
+
+AGP provides Kotlin support itself, so there is **no `org.jetbrains.kotlin.android`
+plugin** — adding one back fails the build outright. Two consequences that are easy to trip
+over:
+
+- `jvmTarget` is not set anywhere. It follows `android.compileOptions.targetCompatibility`,
+  so changing the Java level moves the Kotlin target with it. (Verified: compiled classes
+  report bytecode major version 61 = Java 17.)
+- `kotlin-test-junit` must match the Kotlin version AGP bundles, not the newest release.
+  A newer one fails with "Module was compiled with an incompatible version of Kotlin",
+  naming the expected metadata version — use that. Dependabot will propose newer
+  `kotlin-test` versions that cannot be taken for this reason.
+
+`compileSdk` is ahead of `targetSdk` on purpose: AndroidX requires a recent `compileSdk` to
+compile against, while raising `targetSdk` opts into new runtime behaviour and needs testing
+on a device.
+
 ## Signing
 
 Credentials are never committed. Local builds read a gitignored `keystore.properties` at

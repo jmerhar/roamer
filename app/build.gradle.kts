@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 // Names release artifacts roamer-release.apk (instead of app-release.apk)
@@ -33,7 +32,7 @@ val canSignRelease = releaseKeystore.exists() && !releaseStorePassword.isNullOrB
 
 android {
     namespace = "si.merhar.roamer"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "si.merhar.roamer"
@@ -75,10 +74,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     testOptions {
         unitTests.all {
             // Part of the suite asserts through kotlin.assert, which the JVM evaluates only
@@ -90,13 +85,13 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.activity:activity-ktx:1.9.1")
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.appcompat:appcompat:1.8.0")
+    implementation("androidx.activity:activity-ktx:1.13.0")
+    implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.0")
 }
