@@ -37,7 +37,7 @@ android {
     defaultConfig {
         applicationId = "si.merhar.roamer"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 3
         versionName = "1.1"
     }
