@@ -23,10 +23,35 @@ object NumberRewriter {
     private const val MIN_SUBSCRIBER_LENGTH = 6
 
     /**
-     * Countries where the leading '0' is part of the subscriber number (no trunk prefix).
-     * Italy is the notable EU exception — landline numbers include the '0' (e.g., 06 for Rome).
+     * Maximum digits in an E.164 number, excluding the '+' (ITU-T E.164).
+     *
+     * A result longer than this cannot be a real number, so the input was not a national
+     * number and is left alone rather than dialled as something invalid.
      */
-    private val noTrunkPrefixCountries = setOf("it")
+    private const val E164_MAX_DIGITS = 15
+
+    /**
+     * Length below which a number beginning [SERVICE_NUMBER_PREFIX] is a service code.
+     *
+     * The 11x ranges hold short non-geographic services across Europe: the EU-harmonised
+     * 116xxx numbers of social value (116000 missing children, 116117 medical on-call) and
+     * national directory enquiries such as France's 118XYZ and Germany's 118xy. All are six
+     * digits or fewer and none is reachable in international format, so prefixing one breaks
+     * it. No geographic or mobile number in the supported countries is this short while also
+     * starting with 11 — the shortest such national numbers, in Hungary and Poland, run to
+     * eight and nine digits.
+     */
+    private const val SERVICE_NUMBER_MAX_LENGTH = 6
+    private const val SERVICE_NUMBER_PREFIX = "11"
+
+    /**
+     * International access prefix accepted regardless of the country dialled from.
+     *
+     * ITU-T E.164 recommends 00 and every supported country except the NANP uses it, so it is
+     * treated as international everywhere. Being liberal here is safe: the outcome is to pass
+     * the number through untouched.
+     */
+    private const val UNIVERSAL_INTERNATIONAL_PREFIX = "00"
 
     /**
      * Result of a rewrite attempt.
@@ -58,7 +83,7 @@ object NumberRewriter {
      */
     fun isDestinedForCountry(number: String, countryIso: String): Boolean {
         if (!number.startsWith("+")) return false
-        val dialCode = CountryDialCodes.getDialCode(countryIso.lowercase()) ?: return false
+        val dialCode = CountryDialCodes.getDialCode(countryIso) ?: return false
         if (!number.startsWith("+$dialCode")) return false
         // Ensure the remaining part after +dialCode is a plausible subscriber number
         val subscriber = number.substring(1 + dialCode.length)
@@ -85,8 +110,8 @@ object NumberRewriter {
     ): Result {
         val cleaned = number.replace("[\\s\\-()]".toRegex(), "")
 
-        // Already has international prefix
-        if (cleaned.startsWith("+") || cleaned.startsWith("00")) {
+        // Already in international form, by the universal prefix or an explicit '+'
+        if (cleaned.startsWith("+") || cleaned.startsWith(UNIVERSAL_INTERNATIONAL_PREFIX)) {
             return Result.PassThrough("Already international")
         }
 
@@ -100,6 +125,13 @@ object NumberRewriter {
             return Result.PassThrough("Short number")
         }
 
+        // Harmonised and national service codes in the 11x ranges
+        if (cleaned.length <= SERVICE_NUMBER_MAX_LENGTH &&
+            cleaned.startsWith(SERVICE_NUMBER_PREFIX)
+        ) {
+            return Result.PassThrough("Service number")
+        }
+
         val effectiveNetworkCountry = (manualCountryOverride ?: networkCountryIso).lowercase()
         val simCountry = simCountryIso.lowercase()
 
@@ -108,9 +140,14 @@ object NumberRewriter {
             return Result.PassThrough("Not roaming")
         }
 
-        // Look up the dial code for the network country
-        val dialCode = CountryDialCodes.getDialCode(effectiveNetworkCountry)
+        val plan = CountryDialCodes.getPlan(effectiveNetworkCountry)
             ?: return Result.PassThrough("Unknown country: $effectiveNetworkCountry")
+
+        // International prefixes specific to where the call is dialled from. Needed for the
+        // NANP, where international is 011 and 00 means something else entirely.
+        if (plan.internationalPrefixes.any { cleaned.startsWith(it) }) {
+            return Result.PassThrough("Already international")
+        }
 
         // Everything below rewrites the number. Checked here rather than on entry so the
         // outcomes above are still reported while the fallback is off.
@@ -118,14 +155,18 @@ object NumberRewriter {
             return Result.PassThrough("Fallback rewrite off")
         }
 
-        // Strip trunk prefix (leading 0) — except in countries where 0 is part of the number
-        val withoutTrunk = if (cleaned.startsWith("0") && effectiveNetworkCountry !in noTrunkPrefixCountries) {
-            cleaned.substring(1)
-        } else {
-            cleaned
+        // Drop the trunk prefix this country uses when dialling domestically. Longest first,
+        // so Hungary's 06 is preferred over a bare 0.
+        val trunkPrefix = plan.trunkPrefixes
+            .sortedByDescending { it.length }
+            .firstOrNull { cleaned.startsWith(it) }
+        val nationalNumber = trunkPrefix?.let { cleaned.removePrefix(it) } ?: cleaned
+
+        if (plan.dialCode.length + nationalNumber.length > E164_MAX_DIGITS) {
+            return Result.PassThrough("Too long for E.164")
         }
 
-        val rewritten = "+$dialCode$withoutTrunk"
+        val rewritten = "+${plan.dialCode}$nationalNumber"
         return Result.Rewritten(
             newNumber = rewritten,
             reason = "Roaming in ${effectiveNetworkCountry.uppercase()}: $number → $rewritten"

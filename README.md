@@ -64,9 +64,14 @@ Roamer were not installed. It is a real off switch, not just a bypass of the fal
 
 ## What Is Not Rewritten
 
-- Numbers already in international form (`+…` or `00…`) — passed through
+- Numbers already in international form — `+…`, `00…`, and the local equivalent where it
+  differs, such as `011…` in the US and Canada
 - USSD/MMI codes (`*100#`, `#31#…`) — never touched
-- Short and service numbers, including emergency numbers like `112`
+- Emergency and short numbers such as `112`
+- Service numbers in the `11x` ranges: the EU-harmonised `116xxx` numbers (`116117` medical
+  on-call, `116000` missing children) and directory enquiries like France's `118XYZ`. These
+  have no international form, so prefixing one would make it unreachable
+- Anything that would exceed the 15-digit E.164 limit
 - Every call when the SIM country matches the network country, i.e. when not roaming
 
 ## Known Limitation
@@ -84,8 +89,9 @@ Android does by default. The log in the app shows what each call was dialled as.
 - **Local SIM routing** — optionally route local calls through a local SIM (dual-SIM phones)
 - **Opt-in fallback** — rewrite numbers Android could not recognise, off by default
 - **Manual override** — pick a country manually for the fallback when detection fails
-- **Italy-aware** — Italian numbers keep their leading `0`, which is part of the subscriber
-  number rather than a trunk prefix
+- **Per-country numbering** — each country's own trunk and international prefixes, so
+  Italian numbers keep the leading `0` that belongs to the subscriber number, Hungary's
+  two-digit `06` is removed in full, and US/Canada numbers use trunk `1` and `011`
 - **Call log** — see what recent calls were dialled as, and why
 
 ## Requirements

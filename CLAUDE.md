@@ -78,9 +78,20 @@ The app has one job: make outgoing calls dial in international format when roami
   what "behave as if this app were not installed" means, and so is how the master `enabled`
   preference expresses off. While enabled, always answer with `redirectCall(handle, ...)`;
   using `placeCallUnmodified()` there would silently defeat the app's entire purpose.
-- Italy does NOT use a trunk prefix — the leading `0` is part of the subscriber number.
-  The `noTrunkPrefixCountries` set handles this.
+- **Trunk and international prefixes are per country, in `CountryDialCodes.NumberingPlan`.**
+  Do not reintroduce a hardcoded `0`/`00`. Three countries in the set break the European
+  norm: Hungary dials domestic long distance as `06`, and the NANP (US/Canada) uses trunk
+  `1` with international `011`. Italy has no trunk prefix and its leading `0` is part of the
+  subscriber number, so it is the one country with an empty `trunkPrefixes`.
+- Countries whose plan defines *no* trunk prefix still keep the default `0`, deliberately: a
+  valid national number there cannot begin with `0`, so a leading `0` is a typing habit and
+  removing it recovers a valid number (`0912345678` in Portugal → `+351912345678`).
 - USSD/MMI codes (`*`, `#` prefixed) must never be rewritten.
+- **Service numbers in the 11x ranges are never rewritten**: EU-harmonised `116xxx` and
+  national directory enquiries like France's `118XYZ` are six digits or fewer with no
+  international form. The rule is length ≤ 6 and a `11` prefix, which cannot catch a
+  geographic number — the shortest such national numbers (Hungary, Poland) are 8–9 digits.
+- A result longer than 15 digits is rejected rather than dialled, per the E.164 ceiling.
 - **Local SIM routing is independent of number rewriting** — it runs after the rewrite
   decision. The number always stays in international format; only the
   `PhoneAccountHandle` changes.
@@ -128,14 +139,18 @@ and check the test fails. A test can pass for a reason unrelated to the one it n
 
 ## Adding a Country
 
-Add to `CountryDialCodes.kt`:
+Add to `CountryDialCodes.plans`, checking the country's national numbering plan rather than
+assuming the European norm:
+
 ```kotlin
-"xx" to "123",  // Country Name
+"xx" to NumberingPlan("123"),                                   // trunk 0, international 00
+"xx" to NumberingPlan("123", trunkPrefixes = emptyList()),      // leading 0 is part of the NSN
+"xx" to NumberingPlan("123", listOf("06", "0"), listOf("00")),  // multi-digit trunk prefix
 ```
 
-If the country doesn't use a trunk prefix (like Italy), also add to
-`NumberRewriter.noTrunkPrefixCountries`.
+Two invariants a new entry must not break, both covered by `CountryDialCodesTest`:
 
-A new dial code must not be a prefix of an existing one, nor have an existing one as its
-prefix; `CountryDialCodesTest` asserts this, because `isDestinedForCountry()` matches by
-`startsWith`.
+- The dial code must not be a prefix of an existing one, nor have one as its prefix —
+  `isDestinedForCountry()` matches by `startsWith`.
+- Trunk prefixes are matched longest-first, so list a multi-digit prefix alongside the bare
+  `0` it shadows if both are valid domestically.

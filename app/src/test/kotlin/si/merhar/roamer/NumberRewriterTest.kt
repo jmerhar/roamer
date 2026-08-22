@@ -528,6 +528,227 @@ class NumberRewriterTest {
         assertEquals("+351912345678", result.newNumber)
     }
 
+    // --- Country-specific trunk prefixes ---
+    //
+    // Most of Europe dials domestically with a leading 0 that is dropped internationally.
+    // Three countries in the supported set do not follow that pattern.
+
+    @Test
+    fun `strips Hungary's two-digit 06 trunk prefix`() {
+        // Hungary dials domestic long distance as 06 + national number, so both digits go.
+        // Budapest 06 1 234 5678 is +36 1 234 5678, not +36 61 234 5678.
+        val result = NumberRewriter.evaluate(
+            number = "0612345678",
+            simCountryIso = "nl",
+            networkCountryIso = "hu",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+3612345678", result.newNumber)
+    }
+
+    @Test
+    fun `strips Hungary's trunk prefix for a mobile number`() {
+        val result = NumberRewriter.evaluate(
+            number = "06301234567",
+            simCountryIso = "nl",
+            networkCountryIso = "hu",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+36301234567", result.newNumber)
+    }
+
+    @Test
+    fun `leaves a Hungarian number dialled without its trunk prefix alone`() {
+        val result = NumberRewriter.evaluate(
+            number = "12345678",
+            simCountryIso = "nl",
+            networkCountryIso = "hu",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+3612345678", result.newNumber)
+    }
+
+    @Test
+    fun `strips the NANP trunk prefix 1 in the United States`() {
+        // NANP long distance is 1 + area code; the national number itself is 10 digits and
+        // never begins with 1, so +1 1 202... would be wrong.
+        val result = NumberRewriter.evaluate(
+            number = "12025551234",
+            simCountryIso = "nl",
+            networkCountryIso = "us",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+12025551234", result.newNumber)
+    }
+
+    @Test
+    fun `keeps a ten-digit NANP number intact`() {
+        val result = NumberRewriter.evaluate(
+            number = "2025551234",
+            simCountryIso = "nl",
+            networkCountryIso = "us",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+12025551234", result.newNumber)
+    }
+
+    @Test
+    fun `strips the NANP trunk prefix in Canada`() {
+        val result = NumberRewriter.evaluate(
+            number = "14165551234",
+            simCountryIso = "nl",
+            networkCountryIso = "ca",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+14165551234", result.newNumber)
+    }
+
+    @Test
+    fun `does not treat a leading zero as a trunk prefix in the United States`() {
+        // No NANP national number starts with 0, so this is not a national number at all.
+        val result = NumberRewriter.evaluate(
+            number = "0123456789",
+            simCountryIso = "nl",
+            networkCountryIso = "us",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+10123456789", result.newNumber)
+    }
+
+    // --- Country-specific international access prefixes ---
+
+    @Test
+    fun `treats 011 as international when dialling from the NANP`() {
+        // 011 is the NANP international access code. Prefixing it would produce +1 11 44...
+        val result = NumberRewriter.evaluate(
+            number = "011442079460958",
+            simCountryIso = "nl",
+            networkCountryIso = "us",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("Already international", result.reason)
+    }
+
+    @Test
+    fun `treats 0011 as international when dialling from Australia`() {
+        val result = NumberRewriter.evaluate(
+            number = "0011442079460958",
+            simCountryIso = "nl",
+            networkCountryIso = "au",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("Already international", result.reason)
+    }
+
+    @Test
+    fun `still treats 00 as international in Europe`() {
+        val result = NumberRewriter.evaluate(
+            number = "00442079460958",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("Already international", result.reason)
+    }
+
+    // --- Service numbers in the 11x ranges ---
+
+    @Test
+    fun `passes through EU harmonised 116 service numbers`() {
+        // 116000 (missing children) and 116117 (medical on-call) are six-digit harmonised
+        // numbers with no international form; prefixing one makes it unreachable.
+        for (number in listOf("116000", "116117", "116123")) {
+            val result = NumberRewriter.evaluate(
+                number = number,
+                simCountryIso = "nl",
+                networkCountryIso = "pt",
+                fallbackEnabled = true
+            )
+            assertIs<NumberRewriter.Result.PassThrough>(result, "should not rewrite $number")
+            assertEquals("Service number", result.reason)
+        }
+    }
+
+    @Test
+    fun `passes through directory enquiry numbers in the 118 range`() {
+        // France uses 118XYZ and Germany 118xy for directory enquiries.
+        for (number in listOf("118712", "11833")) {
+            val result = NumberRewriter.evaluate(
+                number = number,
+                simCountryIso = "nl",
+                networkCountryIso = "fr",
+                fallbackEnabled = true
+            )
+            assertIs<NumberRewriter.Result.PassThrough>(result, "should not rewrite $number")
+        }
+    }
+
+    @Test
+    fun `still rewrites a geographic number that merely starts with 11`() {
+        // Polish area codes begin at 12, so a nine-digit number starting 1 is geographic and
+        // must not be caught by the service-number rule.
+        val result = NumberRewriter.evaluate(
+            number = "118765432",
+            simCountryIso = "nl",
+            networkCountryIso = "pl",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+48118765432", result.newNumber)
+    }
+
+    @Test
+    fun `still rewrites a seven-digit number starting with 11`() {
+        // One digit past the service-number range, so the rule must not apply.
+        val result = NumberRewriter.evaluate(
+            number = "1161234",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+3511161234", result.newNumber)
+    }
+
+    // --- E.164 length ceiling ---
+
+    @Test
+    fun `passes through a number that would exceed the E164 digit limit`() {
+        // E.164 allows at most 15 digits; a longer result cannot be a real number, so the
+        // input was not a national number to begin with.
+        val result = NumberRewriter.evaluate(
+            number = "1234567890123456",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.PassThrough>(result)
+        assertEquals("Too long for E.164", result.reason)
+    }
+
+    @Test
+    fun `rewrites a number that lands exactly on the E164 digit limit`() {
+        // +351 plus 12 digits is 15 digits total, which is allowed.
+        val result = NumberRewriter.evaluate(
+            number = "123456789012",
+            simCountryIso = "nl",
+            networkCountryIso = "pt",
+            fallbackEnabled = true
+        )
+        assertIs<NumberRewriter.Result.Rewritten>(result)
+        assertEquals("+351123456789012", result.newNumber)
+    }
+
     // --- isDestinedForCountry ---
 
     @Test
