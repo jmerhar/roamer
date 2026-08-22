@@ -93,5 +93,5 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.10")
 }
