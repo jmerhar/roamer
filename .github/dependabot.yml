@@ -22,3 +22,9 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Kotlin artifacts must match the Kotlin version AGP bundles for its built-in Kotlin
+      # support, not the newest release: a mismatch fails the build with "Module was compiled
+      # with an incompatible version of Kotlin". Dependabot cannot see that coupling, so these
+      # are bumped by hand alongside AGP instead.
+      - dependency-name: "org.jetbrains.kotlin:*"
