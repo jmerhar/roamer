@@ -1,0 +1,31 @@
+# Coverage configuration for the shared tooling in jmerhar/coverage, which renders the CI summary
+# table, enforces the gates, and publishes the HTML reports to https://jmerhar.github.io/coverage/.
+#
+# Two suites: the app's Kotlin, measured by Kover over the debug unit tests, and the release
+# script, measured by kcov over the bats suite. Produce both reports with:
+#   ./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug
+#   bin/run-shell-coverage.sh
+#
+# Each gate sits about two points under the measured line coverage, so a real regression fails CI
+# while the odd defensive line is tolerated. Raise them as coverage climbs; never lower one to make
+# a red build pass.
+
+heading = "Coverage"
+
+[suites.app]
+label = "App (Kotlin)"
+format = "kover"
+report = "app/build/reports/kover/reportDebug.xml"
+html = "app/build/reports/kover/htmlDebug"
+# The Android framework classes Kover excludes (see app/build.gradle.kts) need a device; the one
+# line left uncovered is the DataStore property, which needs a Context.
+gate = 97.0
+
+[suites.scripts]
+label = "Release script (bash)"
+format = "kcov"
+report = "coverage/shell/kcov-merged/coverage.json"
+html = "coverage/shell"
+# Two lines are unreachable in the Linux container kcov runs in: the macOS form of `sed -i`, and
+# a continuation line kcov's tracing does not attribute.
+gate = 95.0

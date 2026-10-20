@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Stand-in for the SDK's apksigner, copied under $ANDROID_HOME/build-tools/ by
+# test/test_helper.bash. The leading underscore keeps it off PATH: the release script finds
+# apksigner in the SDK, not on PATH.
+#
+#   apksigner-fails   `apksigner verify` exits non-zero
+set -uo pipefail
+
+state=${STUB_STATE:?STUB_STATE must be set}
+printf 'apksigner %s\n' "$*" >> "${CALLS:-/dev/null}"
+[ ! -e "$state/apksigner-fails" ]

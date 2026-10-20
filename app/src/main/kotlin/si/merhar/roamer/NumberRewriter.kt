@@ -160,7 +160,7 @@ object NumberRewriter {
         val trunkPrefix = plan.trunkPrefixes
             .sortedByDescending { it.length }
             .firstOrNull { cleaned.startsWith(it) }
-        val nationalNumber = trunkPrefix?.let { cleaned.removePrefix(it) } ?: cleaned
+        val nationalNumber = cleaned.removePrefix(trunkPrefix.orEmpty())
 
         if (plan.dialCode.length + nationalNumber.length > E164_MAX_DIGITS) {
             return Result.PassThrough("Too long for E.164")

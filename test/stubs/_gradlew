@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#
+# Stand-in for ./gradlew in the release fixture, copied there by test/test_helper.bash. The
+# leading underscore keeps it off PATH: the release script calls it by relative path.
+#
+#   gradle-test-fails    testDebugUnitTest exits non-zero
+#   gradle-build-fails   assembleRelease exits non-zero
+#   unsigned             assembleRelease writes only the unsigned APK name
+set -uo pipefail
+
+state=${STUB_STATE:?STUB_STATE must be set}
+printf 'gradlew %s\n' "$*" >> "${CALLS:-/dev/null}"
+
+apk_dir=app/build/outputs/apk/release
+
+for arg in "$@"; do
+  case "$arg" in
+    testDebugUnitTest)
+      [ ! -e "$state/gradle-test-fails" ] || exit 1
+      ;;
+    assembleRelease)
+      [ ! -e "$state/gradle-build-fails" ] || exit 1
+      mkdir -p "$apk_dir"
+      if [ -e "$state/unsigned" ]; then
+        : > "$apk_dir/roamer-release-unsigned.apk"
+      else
+        : > "$apk_dir/roamer-release.apk"
+      fi
+      ;;
+  esac
+done

@@ -9,6 +9,10 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # contents: read for checkout; statuses: write to link the published coverage report.
+    permissions:
+      contents: read
+      statuses: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -20,10 +24,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: ShellCheck
-        run: shellcheck bin/*.sh
+        run: shellcheck bin/*.sh test/test_helper.bash test/stubs/*
 
-      - name: Unit tests
-        run: ./gradlew testDebugUnitTest
+      # Debug unit tests with a Kover report; the Debug variant matches the unit tests.
+      # --continue so a failure still leaves complete JUnit results for Codecov below.
+      - name: Unit tests with coverage
+        run: ./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug --continue
+
+      # The release-script tests under kcov, which also runs every test. kcov has no Ubuntu
+      # 24.04 package, so the script uses the pinned upstream image, which installs bats itself.
+      - name: Release-script tests with coverage
+        run: JUNIT_DIR=junit bin/run-shell-coverage.sh
 
       - name: Android Lint
         run: ./gradlew lint
@@ -32,6 +43,30 @@ jobs:
       # at release time. No signing credentials are present, so the APK is unsigned.
       - name: Release build
         run: ./gradlew assembleRelease
+
+      # The suites, their labels and their gates are declared in coverage.toml; the tooling behind
+      # this and the coverage steps below is shared by every project publishing to the coverage site.
+      - uses: jmerhar/coverage/.github/actions/summary@v1
+        if: ${{ !cancelled() }}
+
+      # Informational, never fails the build. Each suite uploads under its own flag; the JUnit
+      # reports give Codecov flake and failure history. Before the gate, so the data still lands
+      # when the gate fails, and `!cancelled()` so a failing suite still reports its failures.
+      - uses: jmerhar/coverage/.github/actions/codecov@v1
+        if: ${{ !cancelled() }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          junit: app/build/test-results/testDebugUnitTest/*.xml,junit/report.xml
+
+      # Fails the build if either suite's line coverage drops below its bound in coverage.toml.
+      - uses: jmerhar/coverage/.github/actions/gate@v1
+
+      # Publishes this commit's HTML reports to the coverage site and links them from the commit.
+      # Only on green pushes to main; the action skips when the token is absent.
+      - uses: jmerhar/coverage/.github/actions/publish@v1
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          token: ${{ secrets.COVERAGE_PAGES_TOKEN }}
 
       - name: Upload reports
         if: always()

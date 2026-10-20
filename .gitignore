@@ -9,3 +9,11 @@ app/build/
 keystore.properties
 *.iml
 .DS_Store
+
+# Coverage artefacts (regenerable via `make coverage`).
+coverage/
+coverage-upload/
+junit/
+
+# Shared coverage tooling, fetched on demand by `make coverage`.
+.coverage-report.py

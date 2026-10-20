@@ -5,12 +5,13 @@
 ```sh
 make build          # debug APK
 make debug          # install debug to connected device
-make test           # unit tests
-make lint           # Android Lint + ShellCheck on bin/
-make check          # lint + tests — run before pushing
+make test           # unit tests + bats tests for bin/release.sh
+make lint           # Android Lint + ShellCheck on bin/ and test/
+make coverage       # Kover + kcov, then the shared coverage gate (needs Docker)
+make check          # lint + tests + coverage — run before pushing
 make build-release  # release APK
 make install        # install release to connected device
-make clean          # clean build outputs
+make clean          # clean build and coverage outputs
 make release VERSION=x.y NOTES=file  # bump, build, tag, push, publish GitHub Release
 ```
 
@@ -54,7 +55,8 @@ Consequences to keep in mind:
 
 ## Architecture
 
-The app has one job: make outgoing calls dial in international format when roaming.
+The app's main job is to make outgoing calls dial in international format when roaming;
+optionally it also chooses which SIM places a call.
 
 - **`NumberRewriter`** — pure function, all rewrite logic lives here. Stateless, easily
   testable. Also exposes `isDestinedForCountry()` for local SIM routing decisions.
@@ -141,10 +143,10 @@ the README for setup.
 ## Releasing
 
 `make release VERSION=x.y NOTES=file` runs `bin/release.sh`, which pre-flights everything
-that can fail before touching the tree — clean tree on `main`, unused tag, notes file
-present, `gh` authenticated, signing credentials available, tests green — then bumps
-`versionCode`/`versionName` in `app/build.gradle.kts`, builds a signed `assembleRelease`
-APK, verifies the APK is actually signed, commits, tags `vX.Y`, pushes, and creates a
+that can fail before touching the tree — clean tree on `main` in step with `origin/main`,
+unused tag, notes file present, `gh` authenticated, signing credentials available, tests
+green — then bumps `versionCode`/`versionName` in `app/build.gradle.kts`, builds a signed
+`assembleRelease` APK, verifies the APK is actually signed, commits, tags `vX.Y`, pushes, and creates a
 GitHub Release with the APK attached. A notes file is required; `DRAFT=1` creates a draft.
 A failure during the build rolls the version bump back.
 
@@ -153,8 +155,19 @@ The release APK is named `roamer-release.apk` via `base.archivesName`.
 ## Testing
 
 All rewrite logic is in `NumberRewriter` (pure object, no Android dependencies). Tests live
-in `app/src/test/` and run on the JVM — no emulator needed. `make check` runs lint and
-tests together.
+in `app/src/test/` and run on the JVM — no emulator needed. `make check` runs lint, tests
+and the coverage gates together.
+
+`bin/release.sh` is tested by `test/release.bats`, against a throwaway repository with a bare
+origin and stub `gradlew`, `gh` and `apksigner` (see `test/test_helper.bash`), so nothing is
+built or published.
+
+Coverage is configured in `coverage.toml` and enforced in CI by the shared
+`jmerhar/coverage` actions. Kover excludes the Android framework classes in
+`app/build.gradle.kts`; keep logic out of them so it stays measured. kcov runs only in the
+pinned container (`bin/run-shell-coverage.sh`): its macOS build runs scripts with
+`/bin/bash` 3.2 whatever their shebang, which fails bash 4+ syntax such as an empty array
+under `set -u`.
 
 Some tests assert through `kotlin.assert`, which the JVM evaluates only with assertions
 enabled; `testOptions { unitTests.all { it.enableAssertions = true } }` states that

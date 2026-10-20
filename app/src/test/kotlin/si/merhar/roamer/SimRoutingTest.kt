@@ -116,6 +116,11 @@ class SimRoutingTest {
     }
 
     @Test
+    fun `local rule does nothing without a SIM from the visited country`() {
+        assertNull(choose(portugueseNumber, listOf(nl, si), local = true))
+    }
+
+    @Test
     fun `local rule keeps a call already on a visited-country SIM`() {
         assertNull(choose(portugueseNumber, listOf(pt, pt2), current = "pt-sim-2", local = true))
     }

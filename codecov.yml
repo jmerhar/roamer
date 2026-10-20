@@ -1,0 +1,24 @@
+# Codecov is informational: the enforcing gate is the shared coverage gate in CI, with its
+# thresholds in coverage.toml, so a Codecov hiccup never fails a build on its own.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# This repo pushes straight to main.
+comment: false
+
+# One flag per suite in coverage.toml, scoped to that suite's sources.
+flags:
+  app:
+    paths:
+      - app/
+    carryforward: true
+  scripts:
+    paths:
+      - bin/
+    carryforward: true

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# Test double for the `gh` CLI, first on PATH via test/test_helper.bash. Behaviour is driven by
+# marker files in $STUB_STATE; every call is appended to $CALLS so tests can assert on what the
+# release script tried to do.
+#
+#   gh-auth-fails      `gh auth status` exits non-zero
+#   gh-release-fails   `gh release create` exits non-zero
+set -uo pipefail
+
+state=${STUB_STATE:?STUB_STATE must be set}
+printf 'gh %s\n' "$*" >> "${CALLS:-/dev/null}"
+
+case "${1:-} ${2:-}" in
+  "auth status")
+    [ ! -e "$state/gh-auth-fails" ]
+    ;;
+  "repo view")
+    echo "https://github.com/jmerhar/roamer"
+    ;;
+  "release create")
+    [ ! -e "$state/gh-release-fails" ]
+    ;;
+  *)
+    echo "gh stub: unexpected call: $*" >&2
+    exit 64
+    ;;
+esac

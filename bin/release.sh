@@ -55,6 +55,13 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     die "Working tree has uncommitted changes. Commit or stash them first."
 fi
 
+# The release commit is pushed after it and its tag are created locally, so a rejected push
+# would leave both behind and make a rerun abort on the existing tag.
+git fetch --quiet origin main \
+    || die "Could not fetch origin/main to check that main is up to date."
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] \
+    || die "Local main does not match origin/main. Pull or push first."
+
 [[ -n "$NOTES_FILE" ]] \
     || die "Release notes are required. Usage: ./bin/release.sh <version> -n <notes-file> [--draft]"
 [[ -f "$NOTES_FILE" ]] || die "Notes file not found: $NOTES_FILE"

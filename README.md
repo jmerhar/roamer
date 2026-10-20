@@ -1,5 +1,7 @@
 # Roamer
 
+[![codecov](https://codecov.io/gh/jmerhar/roamer/branch/main/graph/badge.svg)](https://app.codecov.io/gh/jmerhar/roamer)
+
 Android app that makes outgoing calls dial in unambiguous international format while
 you're roaming, so you can tap-to-call a local number from Google Maps without editing
 it first.
@@ -35,8 +37,8 @@ that go out.
 
 Roamer registers as that service and always answers with `redirectCall()`, passing back
 the handle Telecom supplied. That single decision is what makes the E.164 form the number
-actually dialled. It never calls `placeCallUnmodified()`, which would revert to the
-original dial string and undo the normalization.
+actually dialled. While enabled it never calls `placeCallUnmodified()`, which would revert
+to the original dial string and undo the normalization.
 
 That is all Roamer does for virtually every call. On a real device roaming in Portugal on
 a Dutch SIM, all 14 calls in the app's log took this path.
@@ -113,12 +115,34 @@ test, or lint.
 make help           # show all commands
 make build          # build debug APK
 make debug          # build & install debug on connected device
-make test           # run unit tests
+make test           # run unit tests and release-script tests
 make lint           # Android Lint + ShellCheck
-make check          # lint + tests (run this before pushing)
+make coverage       # measure coverage and enforce the gates (needs Docker)
+make check          # lint + tests + coverage (run this before pushing)
 make build-release  # build release APK
 make install        # build & install release on connected device
 ```
+
+`make test` needs [bats](https://github.com/bats-core/bats-core) for the release-script
+tests (`brew install bats-core`).
+
+## Coverage
+
+Two suites, declared in `coverage.toml`: the app's Kotlin, measured by
+[Kover](https://github.com/Kotlin/kotlinx-kover) over the debug unit tests, and
+`bin/release.sh`, measured by [kcov](https://github.com/SimonKagstrom/kcov) over the bats
+suite in `test/`. Android framework classes that JVM tests cannot exercise (`MainActivity`,
+`RoamerCallRedirectionService`, `PreferencesRepository`) are excluded in
+`app/build.gradle.kts`; their logic lives in the pure objects the tests cover.
+
+CI gates each suite's line coverage (app ≥ 97%, release script ≥ 95%) with the shared
+tooling from [jmerhar/coverage](https://github.com/jmerhar/coverage), uploads to
+[Codecov](https://app.codecov.io/gh/jmerhar/roamer), and publishes the HTML reports for
+every commit on `main` to
+**[jmerhar.github.io/coverage/roamer](https://jmerhar.github.io/coverage/roamer/)**.
+
+kcov always runs in a pinned Linux container, locally too, because its macOS build runs
+scripts with `/bin/bash` 3.2 regardless of their shebang.
 
 ## Releasing
 
@@ -134,9 +158,9 @@ make release VERSION=1.1 NOTES=notes.md DRAFT=1    # create a draft release
 
 Release notes are required — every release must ship a notes file explaining what changed.
 
-Pre-flight checks run before anything is modified: clean working tree on `main`, tag not
-already taken, notes file present, `gh` installed and authenticated, signing credentials
-available, and the full test suite green. If the build fails the version bump is rolled
+Pre-flight checks run before anything is modified: clean working tree on `main`, in step
+with `origin/main`, tag not already taken, notes file present, `gh` installed and
+authenticated, signing credentials available, and the unit tests green. If the build fails the version bump is rolled
 back, leaving the tree as it was found.
 
 ### Signing setup
@@ -179,10 +203,17 @@ than being given a wrong prefix.
 app/src/main/kotlin/si/merhar/roamer/
 ├── RoamerCallRedirectionService.kt  # System service — intercepts calls
 ├── NumberRewriter.kt                # Pure rewrite logic (testable)
+├── SimRouting.kt                    # Pure SIM-selection rules (testable)
 ├── CountryDialCodes.kt              # ISO → dial code mapping
 ├── RewriteLog.kt                    # Pure log-retention rules
 ├── PreferencesRepository.kt         # DataStore persistence
 └── MainActivity.kt                  # Settings UI
+
+bin/
+├── release.sh                       # Release: bump, build, tag, push, publish
+└── run-shell-coverage.sh            # Run the bats suite under kcov
+
+test/                                # bats tests for bin/release.sh
 ```
 
 ## License

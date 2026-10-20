@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlinx.kover")
 }
 
 // Names release artifacts roamer-release.apk (instead of app-release.apk)
@@ -80,6 +81,27 @@ android {
             // with assertions enabled. Gradle enables them by default; stating it explicitly
             // keeps those tests from silently becoming no-ops if that default ever changes.
             it.enableAssertions = true
+        }
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                // Android framework glue that JVM unit tests cannot exercise. Logic belongs in the
+                // pure objects (NumberRewriter, SimRouting, RewriteLog, CountryDialCodes) or in
+                // top-level functions, which these class names do not cover.
+                classes(
+                    "si.merhar.roamer.MainActivity",
+                    "si.merhar.roamer.MainActivity\$*",
+                    "si.merhar.roamer.RoamerCallRedirectionService",
+                    "si.merhar.roamer.RoamerCallRedirectionService\$*",
+                    "si.merhar.roamer.PreferencesRepository",
+                    "si.merhar.roamer.PreferencesRepository\$*",
+                    "si.merhar.roamer.BuildConfig",
+                )
+            }
         }
     }
 }
