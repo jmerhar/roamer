@@ -58,15 +58,17 @@ The app has one job: make outgoing calls dial in international format when roami
 
 - **`NumberRewriter`** — pure function, all rewrite logic lives here. Stateless, easily
   testable. Also exposes `isDestinedForCountry()` for local SIM routing decisions.
+- **`SimRouting`** — pure SIM-selection rules for `useNumberCountrySim` and `useLocalSim`,
+  kept out of the service so they are testable without TelecomManager.
 - **`RewriteLog`** — pure retention rules for the on-screen log, kept out of
   `PreferencesRepository` so they are testable without DataStore or a Context.
 - **`RoamerCallRedirectionService`** — thin Android service wrapper. Reads prefs
-  synchronously (`runBlocking`), delegates to `NumberRewriter`, resolves local SIM if
-  enabled, always calls `redirectCall()` on the calling thread.
+  synchronously (`runBlocking`), delegates to `NumberRewriter`, resolves the SIM to
+  route through if enabled, always calls `redirectCall()` on the calling thread.
 - **`CountryDialCodes`** — static mapping, no logic beyond lookup.
 - **`PreferencesRepository`** — DataStore wrapper for settings persistence. `enabled`
   (default on) is the master switch; `useFallbackRewrite` (default off) gates the rewriter;
-  `useLocalSim` and `manualCountry` are independent of both.
+  `useLocalSim`, `useNumberCountrySim` and `manualCountry` are independent of both.
 - **`MainActivity`** — settings UI, observe-only (no business logic).
 
 ## Key Constraints
@@ -92,10 +94,14 @@ The app has one job: make outgoing calls dial in international format when roami
   international form. The rule is length ≤ 6 and a `11` prefix, which cannot catch a
   geographic number — the shortest such national numbers (Hungary, Poland) are 8–9 digits.
 - A result longer than 15 digits is rejected rather than dialled, per the E.164 ceiling.
-- **Local SIM routing is independent of number rewriting** — it runs after the rewrite
+- **SIM routing is independent of number rewriting** — it runs after the rewrite
   decision. The number always stays in international format; only the
-  `PhoneAccountHandle` changes.
-- `findLocalSimAccount()` catches `SecurityException` so it silently falls back if
+  `PhoneAccountHandle` changes. `useNumberCountrySim` is tried first, wherever the device
+  is, and its answer is final once a SIM matches, including the initial one. `useLocalSim`
+  (roaming only, numbers for the visited country) is a subset of it, so it only decides
+  anything when the number-country option is off. Both prefer the initial account when
+  several SIMs qualify.
+- `callCapableSims()` catches `SecurityException` so it silently falls back if
   `READ_PHONE_STATE` is not granted.
 - `isDestinedForCountry()` requires at least `MIN_SUBSCRIBER_LENGTH` digits after the dial
   code, so a too-short number is not mistaken for a real subscriber number in that

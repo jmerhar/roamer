@@ -87,6 +87,8 @@ Android does by default. The log in the app shows what each call was dialled as.
 
 - **Automatic detection** — uses the cellular network to determine which country you're in
 - **Local SIM routing** — optionally route local calls through a local SIM (dual-SIM phones)
+- **Number-country SIM routing** — optionally place each call through the SIM from the
+  dialled number's country, wherever you are (dual-SIM phones)
 - **Opt-in fallback** — rewrite numbers Android could not recognise, off by default
 - **Manual override** — pick a country manually for the fallback when detection fails
 - **Per-country numbering** — each country's own trunk and international prefixes, so
@@ -99,8 +101,8 @@ Android does by default. The log in the app shows what each call was dialled as.
 - Android 10+ (API 29) — required for `CallRedirectionService`
 - Must be set as the default call redirection app (prompted on first launch)
 - `READ_PHONE_STATE` is declared in the manifest and requested at runtime only when you
-  enable local SIM routing; the app works without granting it
-- Dual-SIM with a local SIM for the local SIM routing feature (optional)
+  enable either SIM routing option; the app works without granting it
+- Dual-SIM for the SIM routing features (optional)
 
 ## Building
 

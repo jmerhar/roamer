@@ -65,6 +65,7 @@ class RoamerCallRedirectionService : CallRedirectionService() {
 
         val manualCountry = runBlocking { prefs.getManualCountry().ifBlank { null } }
         val useLocalSim = runBlocking { prefs.isUseLocalSim() }
+        val useNumberCountrySim = runBlocking { prefs.isUseNumberCountrySim() }
         val useFallbackRewrite = runBlocking { prefs.isUseFallbackRewrite() }
 
         val result = NumberRewriter.evaluate(
@@ -89,81 +90,68 @@ class RoamerCallRedirectionService : CallRedirectionService() {
             }
         }
 
-        // Determine which SIM to route through
-        val phoneAccount = if (useLocalSim) {
-            resolveLocalSim(finalUri, networkCountry, simCountry) ?: initialPhoneAccount
+        // Determine which SIM to route through. SIMs are only listed when a routing option
+        // is on, since listing them needs READ_PHONE_STATE.
+        val simSwitch = if (useNumberCountrySim || useLocalSim) {
+            SimRouting.choose(
+                number = finalUri.schemeSpecificPart ?: "",
+                sims = callCapableSims(),
+                current = initialPhoneAccount,
+                simCountryIso = simCountry,
+                networkCountryIso = networkCountry,
+                useNumberCountrySim = useNumberCountrySim,
+                useLocalSim = useLocalSim
+            )
         } else {
-            initialPhoneAccount
+            null
         }
+        val phoneAccount = simSwitch?.sim?.account ?: initialPhoneAccount
 
         redirectCall(finalUri, phoneAccount, false)
 
         // Logging
         logScope.launch {
             val timestamp = LocalDateTime.now().format(timeFormat)
-            val usedLocal = phoneAccount != initialPhoneAccount
+            val suffix = when (simSwitch?.rule) {
+                null -> ""
+                SimRouting.Rule.NUMBER_COUNTRY -> " [${simSwitch.sim.countryIso.uppercase()} SIM]"
+                SimRouting.Rule.LOCAL -> " [local SIM]"
+            }
 
             if (reason != null) {
-                val suffix = if (usedLocal) " [local SIM]" else ""
                 prefs.appendLog("[$timestamp] $reason$suffix")
             } else {
                 val isRoaming = simCountry.isNotEmpty() && simCountry != networkCountry
-                if (isRoaming) {
-                    val passReason = (result as NumberRewriter.Result.PassThrough).reason
-                    if (passReason == "Already international") {
-                        val suffix = if (usedLocal) " [local SIM]" else ""
-                        prefs.appendLog("[$timestamp] $number (system-prefixed)$suffix")
-                    }
+                val passReason = (result as NumberRewriter.Result.PassThrough).reason
+                if (isRoaming && passReason == "Already international") {
+                    prefs.appendLog("[$timestamp] $number (system-prefixed)$suffix")
+                } else if (simSwitch != null) {
+                    prefs.appendLog("[$timestamp] $number$suffix")
                 }
             }
         }
     }
 
     /**
-     * If roaming and the dialed number is destined for the network country,
-     * finds a SIM whose [TelephonyManager.getSimCountryIso] matches the network country.
+     * Lists call-capable phone accounts with their SIM's country, skipping accounts with no
+     * SIM country (such as SIP accounts).
      *
-     * Returns null if no local SIM is found, if not roaming, or if permission is missing.
+     * Requires READ_PHONE_STATE permission on Android 12+. Returns an empty list on
+     * SecurityException (permission not granted), so callers fall back to the default SIM.
      */
-    private fun resolveLocalSim(
-        uri: Uri,
-        networkCountry: String,
-        simCountry: String
-    ): PhoneAccountHandle? {
-        // Only relevant when roaming
-        if (networkCountry.isBlank() || simCountry == networkCountry) return null
-
-        // Check if the number is destined for the network country
-        val number = uri.schemeSpecificPart ?: return null
-        if (!NumberRewriter.isDestinedForCountry(number, networkCountry)) return null
-
-        return findLocalSimAccount(networkCountry)
-    }
-
-    /**
-     * Queries TelecomManager for a call-capable phone account whose SIM country
-     * matches [targetCountry].
-     *
-     * Requires READ_PHONE_STATE permission on Android 12+. Returns null on
-     * SecurityException (permission not granted) or if no matching account is found.
-     */
-    private fun findLocalSimAccount(targetCountry: String): PhoneAccountHandle? {
+    private fun callCapableSims(): List<SimRouting.Sim<PhoneAccountHandle>> {
         return try {
             val telecom = getSystemService(TELECOM_SERVICE) as TelecomManager
-            val accounts = telecom.callCapablePhoneAccounts
-
-            for (account in accounts) {
-                val tm = (getSystemService(TELEPHONY_SERVICE) as TelephonyManager)
-                    .createForPhoneAccountHandle(account)
-                val accountCountry = tm?.simCountryIso?.lowercase() ?: continue
-                if (accountCountry == targetCountry.lowercase()) {
-                    return account
-                }
+            val telephony = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+            telecom.callCapablePhoneAccounts.mapNotNull { account ->
+                val country = telephony.createForPhoneAccountHandle(account)
+                    ?.simCountryIso?.lowercase()?.ifBlank { null }
+                    ?: return@mapNotNull null
+                SimRouting.Sim(account, country)
             }
-            null
         } catch (_: SecurityException) {
             // READ_PHONE_STATE not granted — fall back to default SIM
-            null
+            emptyList()
         }
     }
 }

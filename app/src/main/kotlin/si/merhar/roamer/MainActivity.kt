@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main settings screen. Shows roaming status, enable/disable toggle,
- * local SIM toggle, manual country override, and recent rewrite log.
+ * SIM routing toggles, manual country override, and recent rewrite log.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -53,8 +53,11 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) {
-            // Local SIM routing cannot work without it, so do not leave the toggle on.
-            lifecycleScope.launch { prefs.setUseLocalSim(false) }
+            // Neither SIM-routing option can work without it, so do not leave either on.
+            lifecycleScope.launch {
+                prefs.setUseLocalSim(false)
+                prefs.setUseNumberCountrySim(false)
+            }
         }
     }
 
@@ -73,6 +76,7 @@ class MainActivity : AppCompatActivity() {
         setupRoleRequest()
         setupToggle()
         setupLocalSimToggle()
+        setupNumberCountrySimToggle()
         setupFallbackRewriteToggle()
         setupCountryOverride()
         setupStatus()
@@ -125,17 +129,29 @@ class MainActivity : AppCompatActivity() {
     private fun setupLocalSimToggle() {
         bindSwitch(findViewById(R.id.switch_local_sim), prefs.useLocalSim) { isChecked ->
             lifecycleScope.launch { prefs.setUseLocalSim(isChecked) }
-
-            // Stored optimistically; the permission callback switches it back off if the
-            // request is declined, so the stored value always matches what can actually run.
-            val needsPermission = isChecked && ContextCompat.checkSelfPermission(
-                this, Manifest.permission.READ_PHONE_STATE
-            ) != PackageManager.PERMISSION_GRANTED
-
-            if (needsPermission) {
-                phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-            }
+            if (isChecked) requestPhoneStateIfNeeded()
         }
+    }
+
+    private fun setupNumberCountrySimToggle() {
+        bindSwitch(findViewById(R.id.switch_number_country_sim), prefs.useNumberCountrySim) { isChecked ->
+            lifecycleScope.launch { prefs.setUseNumberCountrySim(isChecked) }
+            if (isChecked) requestPhoneStateIfNeeded()
+        }
+    }
+
+    /**
+     * Requests READ_PHONE_STATE, which SIM routing needs to read each SIM's country.
+     *
+     * The toggles that call this store their value optimistically; the permission callback
+     * switches them back off if the request is declined, so the stored values always match
+     * what can actually run.
+     */
+    private fun requestPhoneStateIfNeeded() {
+        val granted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.READ_PHONE_STATE
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) phoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
     }
 
     /**

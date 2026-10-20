@@ -22,6 +22,7 @@ class PreferencesRepository(private val context: Context) {
         val KEY_ENABLED = booleanPreferencesKey("enabled")
         val KEY_MANUAL_COUNTRY = stringPreferencesKey("manual_country")
         val KEY_USE_LOCAL_SIM = booleanPreferencesKey("use_local_sim")
+        val KEY_USE_NUMBER_COUNTRY_SIM = booleanPreferencesKey("use_number_country_sim")
         val KEY_USE_FALLBACK_REWRITE = booleanPreferencesKey("use_fallback_rewrite")
         val KEY_LAST_LOG = stringPreferencesKey("last_log")
     }
@@ -39,6 +40,14 @@ class PreferencesRepository(private val context: Context) {
     /** Whether to route local calls through a local SIM when roaming. */
     val useLocalSim: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_USE_LOCAL_SIM] ?: false
+    }
+
+    /**
+     * Whether to place each call through the SIM from the dialled number's country,
+     * wherever the device is.
+     */
+    val useNumberCountrySim: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_USE_NUMBER_COUNTRY_SIM] ?: false
     }
 
     /**
@@ -66,6 +75,10 @@ class PreferencesRepository(private val context: Context) {
 
     suspend fun setUseLocalSim(value: Boolean) {
         context.dataStore.edit { it[KEY_USE_LOCAL_SIM] = value }
+    }
+
+    suspend fun setUseNumberCountrySim(value: Boolean) {
+        context.dataStore.edit { it[KEY_USE_NUMBER_COUNTRY_SIM] = value }
     }
 
     suspend fun setUseFallbackRewrite(value: Boolean) {
@@ -96,6 +109,9 @@ class PreferencesRepository(private val context: Context) {
 
     /** Reads the use-local-SIM preference once. */
     suspend fun isUseLocalSim(): Boolean = useLocalSim.first()
+
+    /** Reads the number-country-SIM preference once. */
+    suspend fun isUseNumberCountrySim(): Boolean = useNumberCountrySim.first()
 
     /** Reads the fallback-rewrite preference once. */
     suspend fun isUseFallbackRewrite(): Boolean = useFallbackRewrite.first()

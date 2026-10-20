@@ -129,6 +129,21 @@
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_number_country_sim"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/label_use_number_country_sim" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="16dp"
+                        android:text="@string/caption_use_number_country_sim"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_fallback_rewrite"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
