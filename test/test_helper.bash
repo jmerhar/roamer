@@ -93,8 +93,7 @@ assert_untouched() {
 run_release() {
   cd "$FIXTURE" || return 1
   if [ -n "${COVERAGE_DIR:-}" ]; then
-    run kcov --include-path="$REPO_ROOT/bin" --exclude-pattern=run-shell-coverage.sh \
-      "$COVERAGE_DIR" "$REPO_ROOT/bin/release.sh" "$@"
+    run kcov --include-path="$REPO_ROOT/bin" "$COVERAGE_DIR" "$REPO_ROOT/bin/release.sh" "$@"
   else
     run bash "$REPO_ROOT/bin/release.sh" "$@"
   fi

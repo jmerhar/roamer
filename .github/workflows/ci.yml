@@ -31,10 +31,11 @@ jobs:
       - name: Unit tests with coverage
         run: ./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug --continue
 
-      # The release-script tests under kcov, which also runs every test. kcov has no Ubuntu
-      # 24.04 package, so the script uses the pinned upstream image, which installs bats itself.
-      - name: Release-script tests with coverage
-        run: JUNIT_DIR=junit bin/run-shell-coverage.sh
+      # The release-script tests under kcov, as declared on the scripts suite in coverage.toml. kcov
+      # has no Ubuntu 24.04 package, so this takes the pinned kcov container.
+      - uses: jmerhar/coverage/.github/actions/kcov@v1
+        with:
+          junit-dir: junit
 
       - name: Android Lint
         run: ./gradlew lint

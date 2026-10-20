@@ -16,4 +16,4 @@ coverage-upload/
 junit/
 
 # Shared coverage tooling, fetched on demand by `make coverage`.
-.coverage-report.py
+.coverage-tooling/

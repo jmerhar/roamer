@@ -165,11 +165,13 @@ built or published.
 Coverage is configured in `coverage.toml` and enforced in CI by the shared
 `jmerhar/coverage` actions. Kover excludes the Android framework classes in
 `app/build.gradle.kts`; keep logic out of them so it stays measured.
-`bin/run-shell-coverage.sh` uses a local kcov and bats when installed, otherwise the pinned
-container. Stock kcov on macOS fails the suite — it traces with `/bin/bash` 3.2, and with
-`--bash-parser` it fails whenever `ulimit -n` exceeds `kern.maxfilesperproc` — so locally it
-needs a kcov wrapper that fixes both, or `KCOV_FORCE_DOCKER=1`. Do not add the workaround to
-this repo; it belongs in the wrapper.
+The shell suite runs through jmerhar/coverage's shared `run-kcov.sh` (fetched into
+`.coverage-tooling/` by `make coverage-tooling`, and the `kcov` action in CI), configured by the
+`command`, `packages`, `requires` and `min_bash` keys on the `scripts` suite in `coverage.toml`.
+Stock kcov on macOS traces with `/bin/bash` 3.2, which `min_bash = 4` detects, so the runner
+then uses the container (Docker); a kcov wrapper that passes `--bash-parser` and caps
+`ulimit -n` lets it run locally. Do not add that workaround or a runner of its own to this
+repo; the workaround belongs in the wrapper and the runner in jmerhar/coverage.
 
 Some tests assert through `kotlin.assert`, which the JVM evaluates only with assertions
 enabled; `testOptions { unitTests.all { it.enableAssertions = true } }` states that

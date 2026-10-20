@@ -4,7 +4,7 @@
 # Two suites: the app's Kotlin, measured by Kover over the debug unit tests, and the release
 # script, measured by kcov over the bats suite. Produce both reports with:
 #   ./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug
-#   bin/run-shell-coverage.sh
+#   .coverage-tooling/run-kcov.sh   (fetched by `make coverage-tooling`; the kcov action in CI)
 #
 # Each gate sits about two points under the measured line coverage, so a real regression fails CI
 # while the odd defensive line is tolerated. Raise them as coverage climbs; never lower one to make
@@ -26,6 +26,13 @@ label = "Release script (bash)"
 format = "kcov"
 report = "coverage/shell/kcov-merged/coverage.json"
 html = "coverage/shell"
+# How jmerhar/coverage's run-kcov.sh produces the report: test/test_helper.bash applies kcov per
+# invocation from COVERAGE_DIR. release.sh needs bash 4, so a local kcov tracing with an older bash
+# (stock kcov on macOS uses /bin/bash 3.2) is passed over for the container.
+command = 'bats ${JUNIT_DIR:+--report-formatter junit --output "$JUNIT_DIR"} test/'
+packages = ["bats", "git"]
+requires = ["bats"]
+min_bash = 4
 # Two lines are unreachable in the Linux container kcov runs in: the macOS form of `sed -i`, and
 # a continuation line kcov's tracing does not attribute.
 gate = 95.0

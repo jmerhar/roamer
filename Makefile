@@ -10,7 +10,7 @@ build-release: ## Build release APK (unsigned without signing credentials)
 
 clean: ## Clean build and coverage outputs
 	./gradlew clean
-	rm -rf coverage coverage-upload junit $(COVERAGE_REPORT)
+	rm -rf coverage coverage-upload junit $(COVERAGE_TOOLING)
 
 ## Test
 
@@ -22,22 +22,26 @@ lint: ## Run Android Lint and ShellCheck
 	./gradlew lint
 	shellcheck bin/*.sh test/test_helper.bash test/stubs/*
 
-# The coverage summary and gate are shared tooling from jmerhar/coverage, configured by
-# coverage.toml. Fetched rather than vendored, so a local gate enforces exactly what CI does.
-# Refreshed on every run because v1 moves within its major version; -z makes an unchanged file
-# cost a 304, and a failed request falls back to the copy on disk, so this works offline.
-COVERAGE_REPORT := .coverage-report.py
+# The kcov runner, the summary and the gate are shared tooling from jmerhar/coverage, configured
+# by coverage.toml. Fetched rather than vendored, so a local run does exactly what CI does, and
+# kept side by side because run-kcov.sh finds coverage-report.py in its own directory. Refreshed on
+# every run because v1 moves within its major version; -z makes an unchanged file cost a 304, and a
+# failed request falls back to the copy on disk, so this works offline.
+COVERAGE_TOOLING := .coverage-tooling
 
 coverage-tooling:
-	@curl -fsSL -z $(COVERAGE_REPORT) -o $(COVERAGE_REPORT) \
-		https://raw.githubusercontent.com/jmerhar/coverage/v1/bin/coverage-report.py \
-		|| test -f $(COVERAGE_REPORT)
+	@mkdir -p $(COVERAGE_TOOLING)
+	@for f in coverage-report.py run-kcov.sh; do \
+		curl -fsSL -z $(COVERAGE_TOOLING)/$$f -o $(COVERAGE_TOOLING)/$$f \
+			https://raw.githubusercontent.com/jmerhar/coverage/v1/bin/$$f \
+			|| test -f $(COVERAGE_TOOLING)/$$f || exit 1; \
+	done
 
 coverage: coverage-tooling ## Measure both suites and enforce the coverage gates
 	./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug
-	bin/run-shell-coverage.sh
-	python3 $(COVERAGE_REPORT) --format md
-	python3 $(COVERAGE_REPORT) --gate
+	bash $(COVERAGE_TOOLING)/run-kcov.sh
+	python3 $(COVERAGE_TOOLING)/coverage-report.py --format md
+	python3 $(COVERAGE_TOOLING)/coverage-report.py --gate
 
 check: lint test coverage ## Lint, tests and coverage gates — run before pushing
 

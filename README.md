@@ -141,14 +141,17 @@ tooling from [jmerhar/coverage](https://github.com/jmerhar/coverage), uploads to
 every commit on `main` to
 **[jmerhar.github.io/coverage/roamer](https://jmerhar.github.io/coverage/roamer/)**.
 
-`make coverage` uses a locally installed kcov and bats, or the pinned kcov container (as CI
-does) when either is missing; `KCOV_FORCE_DOCKER=1` forces the container.
+`make coverage` runs the shell suite through the shared
+[`run-kcov.sh`](https://github.com/jmerhar/coverage/blob/main/bin/run-kcov.sh), configured on
+the `scripts` suite in `coverage.toml`. It uses a local kcov and bats when they can trace
+`release.sh`, and the pinned kcov container (as CI does) otherwise; `KCOV_FORCE_DOCKER=1`
+forces the container.
 
-> **Stock kcov on macOS fails this suite.** It runs scripts with `/bin/bash` (3.2) whatever
-> their shebang, so tests fail on bash 4+ syntax rather than on a fault in `release.sh`. Giving
-> it `--bash-parser` with a modern bash is not enough on its own: kcov then fails with
-> `Failed to exchange stderr for pipe` whenever `ulimit -n` exceeds `kern.maxfilesperproc`.
-> Wrap kcov to pass `--bash-parser` and cap `ulimit -n`, or use `KCOV_FORCE_DOCKER=1`.
+> **With stock kcov on macOS the run needs Docker.** kcov traces scripts with `/bin/bash` (3.2)
+> whatever their shebang, and `release.sh` needs bash 4, so the runner detects that and uses the
+> container. Giving kcov `--bash-parser` alone is not enough: it then fails with
+> `Failed to exchange stderr for pipe` whenever `ulimit -n` exceeds `kern.maxfilesperproc`. A
+> kcov wrapper that passes `--bash-parser` and caps `ulimit -n` lets it run locally.
 
 ## Releasing
 
@@ -216,8 +219,7 @@ app/src/main/kotlin/si/merhar/roamer/
 └── MainActivity.kt                  # Settings UI
 
 bin/
-├── release.sh                       # Release: bump, build, tag, push, publish
-└── run-shell-coverage.sh            # Run the bats suite under kcov
+└── release.sh                       # Release: bump, build, tag, push, publish
 
 test/                                # bats tests for bin/release.sh
 ```
