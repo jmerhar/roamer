@@ -8,9 +8,14 @@
 # kcov, which accumulates into one output directory across every invocation. kcov must be given
 # the *script* as its target, not `bash script`, or it instruments the bash binary instead.
 #
-# Always measured in the pinned kcov container, locally too: kcov is not packaged for Ubuntu
-# 24.04, and its macOS build ignores the shebang and runs scripts with /bin/bash, which is 3.2.
-# Needs Docker running.
+# Uses a locally installed kcov and bats when both are present, and otherwise reruns itself in
+# the pinned kcov container, which is what CI does since kcov is not packaged for Ubuntu 24.04.
+#
+# Stock kcov on macOS cannot trace release.sh: it runs scripts with /bin/bash (3.2) whatever
+# their shebang, and given --bash-parser it fails with "Failed to exchange stderr for pipe" when
+# the open-file soft limit exceeds kern.maxfilesperproc. Tests then fail on bash 4+ syntax that
+# 3.2 rejects, not on a fault in the script. Wrap kcov to pass --bash-parser and cap
+# `ulimit -n`, or set KCOV_FORCE_DOCKER=1 to use the container.
 #
 # Set JUNIT_DIR (repo-relative) to also write bats's JUnit report there, for Codecov's test
 # analytics.
@@ -35,20 +40,35 @@ if [ -n "${JUNIT_DIR:-}" ]; then
   mkdir -p "$JUNIT_DIR"
 fi
 
-echo "Running the suite in $KCOV_IMAGE …"
-docker run --rm -v "$root":/src -w /src -e "JUNIT_DIR=${JUNIT_DIR:-}" "$KCOV_IMAGE" bash -c '
-  set -eu
-  apt-get update -qq >/dev/null
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq bats git >/dev/null
-  report=()
-  if [ -n "$JUNIT_DIR" ]; then report=(--report-formatter junit --output "/src/$JUNIT_DIR"); fi
-  COVERAGE_DIR=/src/coverage/shell bats "${report[@]}" test/
+# Runs the suite under kcov and leaves the merged report in coverage/shell/kcov-merged/.
+run_suite() {
+  local report=() merged
+  if [ -n "${JUNIT_DIR:-}" ]; then report=(--report-formatter junit --output "$JUNIT_DIR"); fi
+  COVERAGE_DIR="$root/coverage/shell" bats "${report[@]}" test/
   # kcov writes kcov-merged/ only once a second script is traced, and the shared coverage
   # tooling reads the merged report, so merge explicitly; it holds the same figures either way.
-  kcov --merge /tmp/merged /src/coverage/shell/release.sh.*
-  rm -rf /src/coverage/shell/kcov-merged
-  cp -R /tmp/merged/kcov-merged /src/coverage/shell/kcov-merged
+  merged=$(mktemp -d)
+  kcov --merge "$merged" coverage/shell/release.sh.*
+  rm -rf coverage/shell/kcov-merged
+  cp -R "$merged/kcov-merged" coverage/shell/kcov-merged
+  rm -rf "$merged"
+}
+
+if [ -n "${KCOV_IN_CONTAINER:-}" ]; then
+  run_suite
   # The container runs as root; keep what it wrote readable by the host user and later steps.
-  chmod -R a+rX /src/coverage
-  if [ -n "$JUNIT_DIR" ]; then chmod -R a+rX "/src/$JUNIT_DIR"; fi
-'
+  chmod -R a+rX coverage
+  if [ -n "${JUNIT_DIR:-}" ]; then chmod -R a+rX "$JUNIT_DIR"; fi
+elif [ -z "${KCOV_FORCE_DOCKER:-}" ] && command -v kcov >/dev/null && command -v bats >/dev/null; then
+  echo "Running the suite under the locally installed kcov …"
+  run_suite
+else
+  echo "Running the suite in $KCOV_IMAGE …"
+  docker run --rm -v "$root":/src -w /src -e KCOV_IN_CONTAINER=1 -e "JUNIT_DIR=${JUNIT_DIR:-}" \
+    "$KCOV_IMAGE" bash -c '
+      set -eu
+      apt-get update -qq >/dev/null
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq bats git >/dev/null
+      bin/run-shell-coverage.sh
+    '
+fi

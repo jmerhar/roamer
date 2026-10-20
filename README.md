@@ -117,7 +117,7 @@ make build          # build debug APK
 make debug          # build & install debug on connected device
 make test           # run unit tests and release-script tests
 make lint           # Android Lint + ShellCheck
-make coverage       # measure coverage and enforce the gates (needs Docker)
+make coverage       # measure coverage and enforce the gates
 make check          # lint + tests + coverage (run this before pushing)
 make build-release  # build release APK
 make install        # build & install release on connected device
@@ -141,8 +141,14 @@ tooling from [jmerhar/coverage](https://github.com/jmerhar/coverage), uploads to
 every commit on `main` to
 **[jmerhar.github.io/coverage/roamer](https://jmerhar.github.io/coverage/roamer/)**.
 
-kcov always runs in a pinned Linux container, locally too, because its macOS build runs
-scripts with `/bin/bash` 3.2 regardless of their shebang.
+`make coverage` uses a locally installed kcov and bats, or the pinned kcov container (as CI
+does) when either is missing; `KCOV_FORCE_DOCKER=1` forces the container.
+
+> **Stock kcov on macOS fails this suite.** It runs scripts with `/bin/bash` (3.2) whatever
+> their shebang, so tests fail on bash 4+ syntax rather than on a fault in `release.sh`. Giving
+> it `--bash-parser` with a modern bash is not enough on its own: kcov then fails with
+> `Failed to exchange stderr for pipe` whenever `ulimit -n` exceeds `kern.maxfilesperproc`.
+> Wrap kcov to pass `--bash-parser` and cap `ulimit -n`, or use `KCOV_FORCE_DOCKER=1`.
 
 ## Releasing
 

@@ -33,7 +33,7 @@ coverage-tooling:
 		https://raw.githubusercontent.com/jmerhar/coverage/v1/bin/coverage-report.py \
 		|| test -f $(COVERAGE_REPORT)
 
-coverage: coverage-tooling ## Measure both suites and enforce the coverage gates (needs Docker)
+coverage: coverage-tooling ## Measure both suites and enforce the coverage gates
 	./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug
 	bin/run-shell-coverage.sh
 	python3 $(COVERAGE_REPORT) --format md

@@ -7,7 +7,7 @@ make build          # debug APK
 make debug          # install debug to connected device
 make test           # unit tests + bats tests for bin/release.sh
 make lint           # Android Lint + ShellCheck on bin/ and test/
-make coverage       # Kover + kcov, then the shared coverage gate (needs Docker)
+make coverage       # Kover + kcov, then the shared coverage gate
 make check          # lint + tests + coverage — run before pushing
 make build-release  # release APK
 make install        # install release to connected device
@@ -164,10 +164,12 @@ built or published.
 
 Coverage is configured in `coverage.toml` and enforced in CI by the shared
 `jmerhar/coverage` actions. Kover excludes the Android framework classes in
-`app/build.gradle.kts`; keep logic out of them so it stays measured. kcov runs only in the
-pinned container (`bin/run-shell-coverage.sh`): its macOS build runs scripts with
-`/bin/bash` 3.2 whatever their shebang, which fails bash 4+ syntax such as an empty array
-under `set -u`.
+`app/build.gradle.kts`; keep logic out of them so it stays measured.
+`bin/run-shell-coverage.sh` uses a local kcov and bats when installed, otherwise the pinned
+container. Stock kcov on macOS fails the suite — it traces with `/bin/bash` 3.2, and with
+`--bash-parser` it fails whenever `ulimit -n` exceeds `kern.maxfilesperproc` — so locally it
+needs a kcov wrapper that fixes both, or `KCOV_FORCE_DOCKER=1`. Do not add the workaround to
+this repo; it belongs in the wrapper.
 
 Some tests assert through `kotlin.assert`, which the JVM evaluates only with assertions
 enabled; `testOptions { unitTests.all { it.enableAssertions = true } }` states that
