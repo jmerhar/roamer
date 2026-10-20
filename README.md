@@ -87,7 +87,7 @@ Android does by default. The log in the app shows what each call was dialled as.
 
 - **Automatic detection** — uses the cellular network to determine which country you're in
 - **Local SIM routing** — optionally route local calls through a local SIM (dual-SIM phones)
-- **Number-country SIM routing** — optionally place each call through the SIM from the
+- **Number-country SIM routing** — alternatively, place each call through the SIM from the
   dialled number's country, wherever you are (dual-SIM phones)
 - **Opt-in fallback** — rewrite numbers Android could not recognise, off by default
 - **Manual override** — pick a country manually for the fallback when detection fails

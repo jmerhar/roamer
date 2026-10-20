@@ -68,7 +68,8 @@ The app has one job: make outgoing calls dial in international format when roami
 - **`CountryDialCodes`** — static mapping, no logic beyond lookup.
 - **`PreferencesRepository`** — DataStore wrapper for settings persistence. `enabled`
   (default on) is the master switch; `useFallbackRewrite` (default off) gates the rewriter;
-  `useLocalSim`, `useNumberCountrySim` and `manualCountry` are independent of both.
+  `useLocalSim` and `useNumberCountrySim` are mutually exclusive (enabling one disables
+  the other in the same write); they and `manualCountry` are independent of the rest.
 - **`MainActivity`** — settings UI, observe-only (no business logic).
 
 ## Key Constraints
@@ -96,11 +97,13 @@ The app has one job: make outgoing calls dial in international format when roami
 - A result longer than 15 digits is rejected rather than dialled, per the E.164 ceiling.
 - **SIM routing is independent of number rewriting** — it runs after the rewrite
   decision. The number always stays in international format; only the
-  `PhoneAccountHandle` changes. `useNumberCountrySim` is tried first, wherever the device
-  is, and its answer is final once a SIM matches, including the initial one. `useLocalSim`
-  (roaming only, numbers for the visited country) is a subset of it, so it only decides
-  anything when the number-country option is off. Both prefer the initial account when
-  several SIMs qualify.
+  `PhoneAccountHandle` changes. `useLocalSim` switches only while roaming, for numbers
+  destined for the visited country; `useNumberCountrySim` switches for any number whose
+  country matches a SIM, wherever the device is. The second covers every call the first
+  would move, so the settings keep them mutually exclusive. `SimRouting.choose()` still
+  gives the number-country rule precedence, and treats its match as final even when it is
+  the initial account, so a state with both on stays well defined. Both prefer the initial
+  account when several SIMs qualify.
 - `callCapableSims()` catches `SecurityException` so it silently falls back if
   `READ_PHONE_STATE` is not granted.
 - `isDestinedForCountry()` requires at least `MIN_SUBSCRIBER_LENGTH` digits after the dial

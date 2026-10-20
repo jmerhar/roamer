@@ -2,6 +2,7 @@ package si.merhar.roamer
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -12,6 +13,23 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "roamer_prefs")
+
+/**
+ * Sets one of the two mutually exclusive SIM-routing preferences, [key], to [value].
+ *
+ * Enabling one turns the other off within the same edit, so no reader ever sees both on.
+ * Disabling leaves the other untouched.
+ */
+internal fun MutablePreferences.setSimRouting(key: Preferences.Key<Boolean>, value: Boolean) {
+    this[key] = value
+    if (!value) return
+    val other = if (key == PreferencesRepository.KEY_USE_LOCAL_SIM) {
+        PreferencesRepository.KEY_USE_NUMBER_COUNTRY_SIM
+    } else {
+        PreferencesRepository.KEY_USE_LOCAL_SIM
+    }
+    this[other] = false
+}
 
 /**
  * Persists user preferences using Jetpack DataStore.
@@ -37,7 +55,11 @@ class PreferencesRepository(private val context: Context) {
         prefs[KEY_MANUAL_COUNTRY] ?: ""
     }
 
-    /** Whether to route local calls through a local SIM when roaming. */
+    /**
+     * Whether to route local calls through a local SIM when roaming.
+     *
+     * Mutually exclusive with [useNumberCountrySim]; turning either on turns the other off.
+     */
     val useLocalSim: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_USE_LOCAL_SIM] ?: false
     }
@@ -45,6 +67,8 @@ class PreferencesRepository(private val context: Context) {
     /**
      * Whether to place each call through the SIM from the dialled number's country,
      * wherever the device is.
+     *
+     * Mutually exclusive with [useLocalSim]; turning either on turns the other off.
      */
     val useNumberCountrySim: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_USE_NUMBER_COUNTRY_SIM] ?: false
@@ -73,12 +97,14 @@ class PreferencesRepository(private val context: Context) {
         context.dataStore.edit { it[KEY_MANUAL_COUNTRY] = countryIso }
     }
 
+    /** Sets [useLocalSim], turning [useNumberCountrySim] off when enabling. */
     suspend fun setUseLocalSim(value: Boolean) {
-        context.dataStore.edit { it[KEY_USE_LOCAL_SIM] = value }
+        context.dataStore.edit { it.setSimRouting(KEY_USE_LOCAL_SIM, value) }
     }
 
+    /** Sets [useNumberCountrySim], turning [useLocalSim] off when enabling. */
     suspend fun setUseNumberCountrySim(value: Boolean) {
-        context.dataStore.edit { it[KEY_USE_NUMBER_COUNTRY_SIM] = value }
+        context.dataStore.edit { it.setSimRouting(KEY_USE_NUMBER_COUNTRY_SIM, value) }
     }
 
     suspend fun setUseFallbackRewrite(value: Boolean) {

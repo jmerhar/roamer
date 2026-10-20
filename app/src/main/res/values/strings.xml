@@ -13,7 +13,7 @@
     <string name="label_use_local_sim">Use local SIM for local calls</string>
     <string name="caption_use_local_sim">On a dual-SIM phone, place calls to the country you are in through that country\'s SIM. Needs phone permission.</string>
     <string name="label_use_number_country_sim">Call through the SIM of the number\'s country</string>
-    <string name="caption_use_number_country_sim">On a dual-SIM phone, place each call through the SIM from the same country as the number you dial, wherever you are. Needs phone permission.</string>
+    <string name="caption_use_number_country_sim">On a dual-SIM phone, place each call through the SIM from the same country as the number you dial, wherever you are. Replaces the option above. Needs phone permission.</string>
     <string name="label_use_fallback_rewrite">Also rewrite unrecognised numbers</string>
     <string name="caption_use_fallback_rewrite">Off by default. Android normally works out the country prefix itself. This only affects numbers it could not recognise — and because a local number gives no clue which country it belongs to, Roamer has to guess the country you are in. A home number typed without its prefix would then be dialled in the wrong country.</string>
     <string name="log_empty">No rewrites yet</string>
