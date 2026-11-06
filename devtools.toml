@@ -1,0 +1,24 @@
+# Shared tooling from jmerhar/devtools, fetched into .devtools/ by bin/devtools-fetch.sh.
+[fetch]
+ref = "v1"
+files = ["make/devtools.mk", "bin/devtools-check.py", "fetch/devtools-fetch.sh"]
+coverage = true
+
+# .github/dependabot.yml is generated from this table by `make devtools-fix`.
+[[dependabot.update]]
+ecosystem = "gradle"
+directory = "/"
+group = "gradle-minor-patch"
+update_types = ["minor", "patch"]
+comment = """
+Gradle plugins and AndroidX dependencies: routine minor and patch bumps arrive as one pull
+request, while major bumps (AGP and Kotlin especially) come separately for review.
+
+Kotlin artifacts must match the Kotlin version AGP bundles for its built-in Kotlin support, not
+the newest release: a mismatch fails the build with "Module was compiled with an incompatible
+version of Kotlin". Dependabot cannot see that coupling, so they are bumped by hand with AGP."""
+ignore = [{ dependency = "org.jetbrains.kotlin:*" }]
+
+# codecov.yml is generated from coverage.toml and this table.
+[codecov]
+paths = { app = ["app/"], scripts = ["bin/"] }

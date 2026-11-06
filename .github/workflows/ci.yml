@@ -23,6 +23,10 @@ jobs:
       - uses: gradle/actions/wrapper-validation@v6
       - uses: gradle/actions/setup-gradle@v6
 
+      # The vendored fetcher and the generated dependabot.yml and codecov.yml match devtools.
+      - name: devtools-check
+        run: bin/devtools-fetch.sh && python3 .devtools/bin/devtools-check.py
+
       - name: ShellCheck
         run: shellcheck bin/*.sh test/test_helper.bash test/stubs/*
 

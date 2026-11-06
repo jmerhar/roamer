@@ -4,7 +4,7 @@
 # Two suites: the app's Kotlin, measured by Kover over the debug unit tests, and the release
 # script, measured by kcov over the bats suite. Produce both reports with:
 #   ./gradlew testDebugUnitTest koverHtmlReportDebug koverXmlReportDebug
-#   .coverage-tooling/run-kcov.sh   (fetched by `make coverage-tooling`; the kcov action in CI)
+#   .devtools/coverage/run-kcov.sh   (fetched by `make coverage-tooling`; the kcov action in CI)
 #
 # Each gate sits about two points under the measured line coverage, so a real regression fails CI
 # while the odd defensive line is tolerated. Raise them as coverage climbs; never lower one to make

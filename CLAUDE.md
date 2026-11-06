@@ -166,8 +166,13 @@ Coverage is configured in `coverage.toml` and enforced in CI by the shared
 `jmerhar/coverage` actions. Kover excludes the Android framework classes in
 `app/build.gradle.kts`; keep logic out of them so it stays measured.
 The shell suite runs through jmerhar/coverage's shared `run-kcov.sh` (fetched into
-`.coverage-tooling/` by `make coverage-tooling`, and the `kcov` action in CI), configured by the
+`.devtools/coverage/` by `make coverage-tooling`, and the `kcov` action in CI), configured by the
 `command`, `packages`, `requires` and `min_bash` keys on the `scripts` suite in `coverage.toml`.
+
+The shared Makefile targets and checks come from jmerhar/devtools, pinned in `devtools.toml`
+and fetched into `.devtools/` by `bin/devtools-fetch.sh`. `.github/dependabot.yml` and
+`codecov.yml` are generated from `devtools.toml` (and `coverage.toml`): edit those and run
+`make devtools-fix`; `make devtools-check`, part of `make check` and CI, fails when they drift.
 Stock kcov on macOS traces with `/bin/bash` 3.2, which `min_bash = 4` detects, so the runner
 then uses the container (Docker); a kcov wrapper that passes `--bash-parser` and caps
 `ulimit -n` lets it run locally. Do not add that workaround or a runner of its own to this
