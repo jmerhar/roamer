@@ -3,9 +3,10 @@
 # help, devtools-update, coverage-tooling and devtools-check come from jmerhar/devtools; make
 # fetches them on the first run and whenever devtools.toml changes.
 .DEFAULT_GOAL := help
+DEVTOOLS_FETCH := tools/devtools-fetch.sh
 include .devtools/make/devtools.mk
-.devtools/make/devtools.mk: devtools.toml bin/devtools-fetch.sh
-	bin/devtools-fetch.sh
+.devtools/make/devtools.mk: devtools.toml $(DEVTOOLS_FETCH)
+	$(DEVTOOLS_FETCH)
 
 ##@ Build
 

@@ -170,7 +170,7 @@ The shell suite runs through jmerhar/coverage's shared `run-kcov.sh` (fetched in
 `command`, `packages`, `requires` and `min_bash` keys on the `scripts` suite in `coverage.toml`.
 
 The shared Makefile targets and checks come from jmerhar/devtools, pinned in `devtools.toml`
-and fetched into `.devtools/` by `bin/devtools-fetch.sh`. `.github/dependabot.yml` and
+and fetched into `.devtools/` by `tools/devtools-fetch.sh`. `.github/dependabot.yml` and
 `codecov.yml` are generated from `devtools.toml` (and `coverage.toml`): edit those and run
 `make devtools-fix`; `make devtools-check`, part of `make check` and CI, fails when they drift.
 Stock kcov on macOS traces with `/bin/bash` 3.2, which `min_bash = 4` detects, so the runner

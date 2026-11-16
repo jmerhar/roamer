@@ -1,8 +1,12 @@
-# Shared tooling from jmerhar/devtools, fetched into .devtools/ by bin/devtools-fetch.sh.
+# Shared tooling from jmerhar/devtools, fetched into .devtools/ by tools/devtools-fetch.sh, a
+# vendored copy kept outside bin/, whose scripts the shell coverage suite measures.
 [fetch]
 ref = "v1"
 files = ["make/devtools.mk", "bin/devtools-check.py", "fetch/devtools-fetch.sh"]
 coverage = true
+
+[check]
+fetcher = "tools/devtools-fetch.sh"
 
 # .github/dependabot.yml is generated from this table by `make devtools-fix`.
 [[dependabot.update]]
