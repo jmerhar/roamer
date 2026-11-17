@@ -12,8 +12,7 @@ fetcher = "tools/devtools-fetch.sh"
 [[dependabot.update]]
 ecosystem = "gradle"
 directory = "/"
-group = "gradle-minor-patch"
-update_types = ["minor", "patch"]
+group = "gradle"
 comment = """
 Gradle plugins and AndroidX dependencies: routine minor and patch bumps arrive as one pull
 request, while major bumps (AGP and Kotlin especially) come separately for review.
